@@ -7,6 +7,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CosmosDB", "CosmosDB", "{DA
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CosmosDb.Table", "CosmosDb.Table\CosmosDb.Table.csproj", "{A8694162-594F-46C5-9BF5-1306940FAC50}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CosmosDb.GraphAPI.Recommender", "CosmosDb.GraphAPI.Recommender\CosmosDb.GraphAPI.Recommender.csproj", "{F40BD56A-AEFC-44AD-A52E-8609DA4C60A8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -17,12 +19,17 @@ Global
 		{A8694162-594F-46C5-9BF5-1306940FAC50}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A8694162-594F-46C5-9BF5-1306940FAC50}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A8694162-594F-46C5-9BF5-1306940FAC50}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F40BD56A-AEFC-44AD-A52E-8609DA4C60A8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F40BD56A-AEFC-44AD-A52E-8609DA4C60A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F40BD56A-AEFC-44AD-A52E-8609DA4C60A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F40BD56A-AEFC-44AD-A52E-8609DA4C60A8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{A8694162-594F-46C5-9BF5-1306940FAC50} = {DA3AC10D-8EA5-4265-9804-A38AF948F40B}
+		{F40BD56A-AEFC-44AD-A52E-8609DA4C60A8} = {DA3AC10D-8EA5-4265-9804-A38AF948F40B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {557F2206-6B12-412A-8AEB-5BF480D97F4B}
