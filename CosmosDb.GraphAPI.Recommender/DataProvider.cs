@@ -80,8 +80,6 @@ namespace CosmosDb.GraphAPI.Recommender
             return (brands, products, people);
         }
 
-        // Save data
-
         public void SaveBrands(List<Brand> brands, string sampleName)
         {
             var path = Path.Combine(GeneratedDataLocation, $"{sampleName}-brands.csv");
@@ -118,89 +116,6 @@ namespace CosmosDb.GraphAPI.Recommender
             }
         }
 
-        // Testing
-
-        public static void FindCommonProductsBetweenPeople(List<Person> people)
-        {
-            // int - product id
-            // List<int> - people id
-            var commonProducts = new Dictionary<int, List<int>>();
-
-            foreach (var person in people)
-            {
-                foreach (var product in person.ProductIds)
-                {
-                    if (!commonProducts.ContainsKey(product))
-                    {
-                        commonProducts.Add(product, new List<int>());
-                    }
-
-                    commonProducts[product].Add(person.Id);
-                }
-            }
-
-            //int GetCommonCount(int[] ar1, int[] ar2)
-            //{
-            //    int result = 0;
-            //    for (int i = 0; i < ar1.Length; ++i)
-            //    {
-            //        for (int j = 0; j < ar2.Length; ++j)
-            //        {
-            //            if (ar1[i] == ar2[j])
-            //            {
-            //                ++result;
-            //            }
-            //        }
-            //    }
-
-            //    return result;
-            //}
-
-            ////Сколько общего между каждым пользователем
-
-            //int[,] ma = new int[people.Count, people.Count];
-
-            //for (int i = 0; i < people.Count; ++i)
-            //{
-            //    for (int j = 0; j < people.Count; ++j)
-            //    {
-            //        ma[i, j] = GetCommonCount(people[i].ProductIds, people[j].ProductIds);
-            //    }
-            //}
-
-            //using (var sw = new StreamWriter(@"C:\Users\Ruslan_Bondar\Projects\AzureSamples\CosmosDb.GraphAPI.Recommender\Data\CommonTable.csv"))
-            //{
-            //    for (int i = 0; i < people.Count; ++i)
-            //    {
-            //        for (int j = 0; j < people.Count; ++j)
-            //        {
-            //            sw.Write(ma[i, j] + ",");
-            //        }
-            //        sw.WriteLine();
-            //    }
-            //}
-
-            //Console.WriteLine("Product : People who have this product");
-
-            using (var sw = new StreamWriter(@"C:\Users\Ruslan_Bondar\Projects\AzureSamples\CosmosDb.GraphAPI.Recommender\Data\AdjencyList.csv"))
-            {
-                sw.WriteLine("product id, people ids who have");
-                foreach (var productPeoplePair in commonProducts)
-                {
-                    sw.Write(productPeoplePair.Key + ",");
-
-                    for (int i = 0; i < productPeoplePair.Value.Count; ++i)
-                    {
-                        sw.Write(productPeoplePair.Value[i] + ",");
-                    }
-
-                    sw.WriteLine();
-                }
-            }
-        }
-
-        // Read stock data
-
         private void ReadStockBrandsProductsData()
         {
             _brandsProducts = new List<(string brand, List<string> products)>();
@@ -228,8 +143,6 @@ namespace CosmosDb.GraphAPI.Recommender
             _names = File.ReadAllLines(Path.Combine(StockDataLocation, "Names.txt"));
         }
 
-        // Generate data
-
         private (List<Brand> brands, List<Product> products) GenerateBrandsProductsSampleList(
             int brandsCount,
             int maxProductCount)
@@ -245,14 +158,11 @@ namespace CosmosDb.GraphAPI.Recommender
                     $"than maxProductCount parameter.");
             }
 
-            // Sorting by descending quantity of products in a brand
             _brandsProducts.Sort(Comparer<(string brand, List<string> products)>.Create((x, y)
                 => y.products.Count.CompareTo(x.products.Count)));
 
-            // Result
             var brands = new List<Brand>(brandsCount);
 
-            // Takes the first brandsCount brands.
             int brandId = OffsetOptions.Brand;
             for (int i = 0; i < brandsCount; ++i)
             {
@@ -260,7 +170,6 @@ namespace CosmosDb.GraphAPI.Recommender
                 ++brandId;
             }
 
-            // Result
             var products = new List<Product>(maxProductCount);
 
             int productId = OffsetOptions.Product;
@@ -270,14 +179,11 @@ namespace CosmosDb.GraphAPI.Recommender
             int j = brandsCount - 1;
             while (j >= 0)
             {
-                // If the brand does not have the average number of required products.
-                // Remember how much is missing.
                 if (_brandsProducts[j].product.Count < avarageModelCountPerBrand)
                 {
                     productsNeed += avarageModelCountPerBrand - _brandsProducts[j].product.Count;
                 }
 
-                // Adding avarageModelCountPerBrand products to the result.
                 int i = 0;
                 while (i < _brandsProducts[j].product.Count && i < avarageModelCountPerBrand)
                 {
@@ -289,8 +195,6 @@ namespace CosmosDb.GraphAPI.Recommender
                     ++i;
                 }
 
-                // If the current brand has more products than avarageModelCountPerBrand,
-                // and if we do not have enough products (Because earlier some product had less)
                 while (i < _brandsProducts[j].product.Count && productsNeed > 0)
                 {
                     products.Add(new Product(
@@ -335,8 +239,6 @@ namespace CosmosDb.GraphAPI.Recommender
                     $"It can not be less than 0 or be greater than 1.");
             }
 
-            // Creates people and generates their products array
-
             int[] GenerateProductsArray(int size)
             {
                 var result = new int[size];
@@ -361,32 +263,24 @@ namespace CosmosDb.GraphAPI.Recommender
                 totalProducts += productsCount;
             }
 
-
-            // Extra making common goods between some of users
-
             int personCountHaveCommonProducts = (int)(peoplePercentHaveCommonProducts * people.Count);
             for (int i = 0; i < personCountHaveCommonProducts; ++i)
             {
-                // Selecting two random people 
                 int person1 = _random.Next(0, people.Count);
                 int person2 = _random.Next(0, people.Count);
 
                 int j = (people[person1].ProductIds.Length + people[person2].ProductIds.Length) / 2;
                 while (j > 0)
                 {
-                    // Generating two random indexes
                     int person1ProductIdIndex = _random.Next(0, people[person1].ProductIds.Length);
                     int person2ProductIdIndex = _random.Next(0, people[person2].ProductIds.Length);
 
-                    // Getting products id at this indexes
                     int person1ProductId = people[person1].ProductIds[person1ProductIdIndex];
                     int person2ProductId = people[person2].ProductIds[person2ProductIdIndex];
 
-                    // Generating two random indexes
                     var a1 = _random.Next(0, people[person1].ProductIds.Length);
                     var a2 = _random.Next(0, people[person2].ProductIds.Length);
 
-                    // Replacing oroginal id by new
                     people[person1].ProductIds[a1] = person2ProductId;
                     people[person2].ProductIds[a2] = person1ProductId;
 

@@ -85,7 +85,7 @@ namespace CosmosDb.GraphAPI.Recommender
 
                         break;
                     case 3:
-                        Console.WriteLine("Sample name: ");
+                        Console.Write("Sample name: ");
                         sampleName = Console.ReadLine();
 
                         var brands = DataProvider.ReadBrands(sampleName);
