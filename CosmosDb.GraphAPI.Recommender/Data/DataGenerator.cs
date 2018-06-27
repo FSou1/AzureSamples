@@ -1,45 +1,45 @@
-﻿using System;
+﻿using CosmosDb.GraphAPI.Recommender.Data.Entites;
+using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
 
-namespace CosmosDb.GraphAPI.Recommender
+namespace CosmosDb.GraphAPI.Recommender.Data
 {
-    public class OffsetOptions
-    {
-        public OffsetOptions(int brandOffset, int productOffset, int personOffset)
-        {
-            this.Brand = brandOffset;
-            this.Product = productOffset;
-            this.Person = personOffset;
-        }
-
-        public int Brand { get; private set; }
-        public int Product { get; private set; }
-        public int Person { get; private set; }
-    }
-
     public class DataGenerator
     {
+        public class DataOffsetOptions
+        {
+            public DataOffsetOptions(int brandOffset, int productOffset, int personOffset)
+            {
+                this.Brand = brandOffset;
+                this.Product = productOffset;
+                this.Person = personOffset;
+            }
+
+            public int Brand { get; private set; }
+            public int Product { get; private set; }
+            public int Person { get; private set; }
+        }
+
         private static readonly Random _random = new Random();
         private List<(string brand, List<string> product)> _brandsProducts;
         private string[] _names;
 
 
-        public DataGenerator(OffsetOptions offsetOptions)
+        public DataGenerator(DataOffsetOptions dataOffsetOptions)
         {
-            this.OffsetOptions = offsetOptions;
+            this.OffsetOptions = dataOffsetOptions;
             this.StockDataLocation = ConfigurationManager.AppSettings["DataGenerator.StockData"];
             this.GeneratedDataLocation = ConfigurationManager.AppSettings["DataGenerator.GeneratedData"];
         }
 
 
-        public OffsetOptions OffsetOptions { get; private set; }
+        public DataOffsetOptions OffsetOptions { get; private set; }
 
         public string StockDataLocation { get; set; }
 
         public string GeneratedDataLocation { get; set; }
-
 
 
         public (List<Brand> brands, List<Product> products, List<Person> people) GenerateData(
@@ -290,77 +290,5 @@ namespace CosmosDb.GraphAPI.Recommender
 
             return people;
         }
-    }
-
-    public static class DataProvider
-    {
-        private static readonly string _generatedDataLocation =
-            ConfigurationManager.AppSettings["DataGenerator.GeneratedData"];
-
-        public static List<Brand> ReadBrands(string sampleName)
-        {
-            var brands = new List<Brand>();
-            var path = Path.Combine(_generatedDataLocation, $"{sampleName}-brands.csv");
-            using (var sr = new StreamReader(path))
-            {
-                string str;
-                while ((str = sr.ReadLine()) != null)
-                {
-                    var tokens = str.Split(';');
-                    brands.Add(new Brand(
-                        id: int.Parse(tokens[0]),
-                        name: tokens[1]));
-                }
-            }
-
-            return brands;
-        }
-
-        public static List<Product> ReadProducts(string sampleName)
-        {
-            var products = new List<Product>();
-            var path = Path.Combine(_generatedDataLocation, $"{sampleName}-products.csv");
-            using (var sr = new StreamReader(path))
-            {
-                string str;
-                while ((str = sr.ReadLine()) != null)
-                {
-                    var tokens = str.Split(';');
-                    products.Add(new Product(
-                            id: int.Parse(tokens[0]),
-                            name: tokens[2],
-                            brandId: int.Parse(tokens[1])));
-                }
-            }
-
-            return products;
-        }
-
-        public static List<Person> ReadPeople(string sampleName)
-        {
-            var people = new List<Person>();
-            var path = Path.Combine(_generatedDataLocation, $"{sampleName}-people.csv");
-            using (var sr = new StreamReader(path))
-            {
-                string str;
-                while ((str = sr.ReadLine()) != null)
-                {
-                    var tokens = str.Split(';');
-                    var productsIdTokens = tokens[2].Split(',');
-                    var productIds = new int[productsIdTokens.Length];
-                    for (int i = 0; i < productIds.Length; ++i)
-                    {
-                        productIds[i] = int.Parse(productsIdTokens[i]);
-                    }
-                    people.Add(new Person(
-                        id: int.Parse(tokens[0]),
-                        name: tokens[1],
-                        productIds: productIds));
-                }
-            }
-
-            return people;
-        }
-
     }
 }

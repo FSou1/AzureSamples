@@ -179,8 +179,11 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="DataProvider.cs" />
-    <Compile Include="DataSeed.cs" />
+    <Compile Include="Data\DataGenerator.cs" />
+    <Compile Include="Data\DataProvider.cs" />
+    <Compile Include="Data\Entites\Brand.cs" />
+    <Compile Include="Data\Entites\Person.cs" />
+    <Compile Include="Data\Entites\Product.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

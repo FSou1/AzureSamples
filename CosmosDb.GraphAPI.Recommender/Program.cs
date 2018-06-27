@@ -1,14 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using CosmosDb.GraphAPI.Recommender.Data;
+using CosmosDb.GraphAPI.Recommender.Data.Entites;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.Documents.Linq;
 using Microsoft.Azure.Graphs;
 using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Threading.Tasks;
 
 namespace CosmosDb.GraphAPI.Recommender
 {
@@ -64,7 +64,7 @@ namespace CosmosDb.GraphAPI.Recommender
                         Console.Write("Percent of people who have common products: ");
                         var peoplePercentHaveCommonProducts = double.Parse(Console.ReadLine());
 
-                        var dg = new DataGenerator(new OffsetOptions(
+                        var dg = new DataGenerator(new DataGenerator.DataOffsetOptions(
                             brandOffset: 1,
                             productOffset: 50_000,
                             personOffset: 1_000_000));
@@ -78,8 +78,6 @@ namespace CosmosDb.GraphAPI.Recommender
                             maxProductsCount: maxProductsCount,
                             peoplePercentHaveCommonProducts: peoplePercentHaveCommonProducts,
                             saveDataToFile: true);
-
-                        DataGenerator.FindCommonProductsBetweenPeople(res.people);
 
                         Console.WriteLine("Generated and saved.");
 
