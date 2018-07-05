@@ -97,54 +97,139 @@ namespace CosmosDb.GraphAPI.Recommender
                             collectionThroughput: int.Parse(ConfigurationManager.AppSettings["CollectionThroughput"]));
                         break;
                     case 4:
-                        //Console.Write("Sample name: ");
-                        //sampleName = Console.ReadLine();
-                        sampleName = "S10000";
-                        var brands = DataProvider.ReadBrands(sampleName);
-                        var products = DataProvider.ReadProducts(sampleName);
-
                         var collection = graphDb.GetCollection(
                             database: graphDb.GetDatabase(ConfigurationManager.AppSettings["DatabaseName"]),
                             collectionName: ConfigurationManager.AppSettings["CollectionName"]);
 
-                        //var a = @"C:\Users\Ruslan_Bondar\Downloads\azure-documentdb-dotnet-master\samples\documentdb-benchmark\br.txt";
-                        //File.WriteAllText(a, JsonConvert.SerializeObject(brands.ToArray()));
 
+                        //Console.Write("Sample name: ");
+                        //sampleName = Console.ReadLine();
+                        sampleName = "S10000";
+                        var brands = DataProvider.ReadBrands(sampleName);
 
-                        //var b = @"C:\Users\Ruslan_Bondar\Downloads\azure-documentdb-dotnet-master\samples\documentdb-benchmark\pr.txt";
-                        //File.WriteAllText(b, JsonConvert.SerializeObject(products.ToArray()));
-
-
-
-
-                        await graphDb.Add(
+                        await graphDb.AddData(
                             databaseName: ConfigurationManager.AppSettings["DatabaseName"],
                             dataCollection: collection,
                             collectionThroughput: int.Parse(ConfigurationManager.AppSettings["CollectionThroughput"]),
                             brands,
-                            x => $"g.addV('brand').property('id', '{x.Id}').property('name', '{x.Name}')");
+                            x => new
+                            {
+                                id = x.Id.ToString(),
+                                label = "brand",
+                                type = "vertex",
+                                name = new[] {
+                                    new
+                                    {
+                                        id = Guid.NewGuid().ToString(),
+                                        _value = x.Name
+                                    }
+                                }
+                            });
 
-                        //await graphDb.Add(
-                        //    databaseName: ConfigurationManager.AppSettings["DatabaseName"],
-                        //    dataCollection: collection,
-                        //    collectionThroughput: int.Parse(ConfigurationManager.AppSettings["CollectionThroughput"]),
-                        //    products,
-                        //    x => $"g.addV('product').property('id', '{x.Id}').property('name', '{x.Name}').addE('made_by').to(g.V('{x.BrandId}'))");
+                        var products = DataProvider.ReadProducts(sampleName);
+
+                        await graphDb.AddData(
+                            databaseName: ConfigurationManager.AppSettings["DatabaseName"],
+                            dataCollection: collection,
+                            collectionThroughput: int.Parse(ConfigurationManager.AppSettings["CollectionThroughput"]),
+                            products,
+                            x => new
+                            {
+                                id = x.Id.ToString(),
+                                label = "product",
+                                type = "vertex",
+                                name = new[] {
+                                    new
+                                    {
+                                        id = Guid.NewGuid().ToString(),
+                                        _value = x.Name
+                                    }
+                                }
+                            });
+
+                        await graphDb.AddData(
+                            databaseName: ConfigurationManager.AppSettings["DatabaseName"],
+                            dataCollection: collection,
+                            collectionThroughput: int.Parse(ConfigurationManager.AppSettings["CollectionThroughput"]),
+                            products,
+                            x => new
+                            {
+                                _isEdge = true,
+                                id = Guid.NewGuid().ToString(),
+                                label = "made_by",
+
+                                _vertexId = x.Id,
+                                _vertexLabel = "product",
+
+                                _sink = x.BrandId,
+                                _sinkLabel = "brand",
+                                _sinkPartition = "stereotype"
+                            });
+
+                        var people = DataProvider.ReadPeople(sampleName);
+
+
+                        return 0;
+
+                        var cl = GetClient();
+                        var co = await GetCollection(cl, "graphdbnonpart", "nonpart");
+
+                        var brand = $"g.addV('brand').property('id', '{1}').property('name', '{"NOKIA"}')";
+                        var product1 = $"g.addV('product').property('id', '{10}').property('name', '{"N95"}').addE('made_by').to(g.V('{1}'))";
+                        //var product2 = $"g.addV('product').property('id', '{11}').property('name', '{"N96"}').addE('made_by').to(g.V('{1}'))";
+                        var product2 = $"g.addV('product').property('id', '{11}').property('name', '{"N96"}')";
+
+                        //var person = $"g.addV('person').property('id', '{100}').property('name', '{"Ruslan"}')";
+
+                        //var personP1 = $"g.V('{100}').addE('bought').to(g.V('{10}'))";
+                        //var personP2 = $"g.V('{100}').addE('bought').to(g.V('{11}'))";
+
+
+                        ExecuteQuery(cl, co, brand).Wait();
+                        ExecuteQuery(cl, co, product1).Wait();
+                        ExecuteQuery(cl, co, product2).Wait();
+
+
+                        //ExecuteQuery(cl, co, person).Wait();
+                        //ExecuteQuery(cl, co, personP1).Wait();
+                        //ExecuteQuery(cl, co, personP2).Wait();
+
+
+                        var obj1 = new
+                        {
+                            _isEdge = true,
+                            id = Guid.NewGuid().ToString(),
+                            label = "made_by",
+
+                            _vertexId = "11",                  // fromV
+                            _vertexLabel = "product",
+
+                            _sink = "1",                       // toV
+                            _sinkLabel = "brand",
+                            _sinkPartition = "stereotype"
+                        };
+
+                        ResourceResponse<Document> response = await cl.CreateDocumentAsync(
+                        UriFactory.CreateDocumentCollectionUri("graphdbnonpart", "nonpart"),
+                            obj1,
+                            new RequestOptions() { });
 
 
 
 
-                        //var products = DataProvider.ReadProducts(sampleName);
-                        //var people = DataProvider.ReadPeople(sampleName);
 
 
-                        //    var sw = new Stopwatch();
-                        //    sw.Start();
-                        //    //AddBrands(client, collection, brands);
-                        //    //AddProducts(client, collection, products);
-                        //    //AddPersons(client, collection, people);
-                        //    //AddPersonProducts(client, collection, people);
-                        //    Console.WriteLine(sw.Elapsed);
+
+
+
+
+                        //var sw = new Stopwatch();
+                        //sw.Start();
+                        //AddBrands(cl, co, brands);
+                        //AddProducts(graphDb._client, collection, products);
+                        ////AddPersons(client, collection, people);
+                        ////AddPersonProducts(client, collection, people);
+                        //Console.WriteLine(sw.Elapsed);
                         break;
                     case 7:
                         await graphDb.DeleteDatabase(
@@ -237,7 +322,7 @@ namespace CosmosDb.GraphAPI.Recommender
             DocumentCollection graph,
             List<Product> products)
         {
-            RunQueryByChunks(client, graph, products, x => $"g.addV('product').property('id', '{x.Id}').property('name', '{x.Name}').addE('made_by').to(g.V('{x.BrandId}'))", 1150);
+            RunQueryByChunks(client, graph, products, x => $"g.addV('product').property('id', '{x.Id}').property('name', '{x.Name}').addE('made_by').to(g.V('{x.BrandId}'))", 10);
         }
 
         private static void AddPersons(
@@ -287,22 +372,22 @@ namespace CosmosDb.GraphAPI.Recommender
             }
         }
 
-        //private static DocumentClient GetClient()
-        //{
-        //    string endpoint = ConfigurationManager.AppSettings["EndPointUrl"];
-        //    string authKey = ConfigurationManager.AppSettings["AuthKey"];
+        private static DocumentClient GetClient()
+        {
+            string endpoint = ConfigurationManager.AppSettings["EndPointUrl"];
+            string authKey = ConfigurationManager.AppSettings["AuthKey"];
 
-        //    return new DocumentClient(new Uri(endpoint), authKey, new ConnectionPolicy
-        //    {
-        //        ConnectionMode = ConnectionMode.Direct,
-        //        ConnectionProtocol = Protocol.Tcp
-        //    });
-        //}
+            return new DocumentClient(new Uri(endpoint), authKey, new ConnectionPolicy
+            {
+                ConnectionMode = ConnectionMode.Direct,
+                ConnectionProtocol = Protocol.Tcp
+            });
+        }
 
-        //private static async Task<DocumentCollection> GetCollection(DocumentClient client)
-        //{
-        //    return await client.ReadDocumentCollectionAsync(UriFactory.CreateDocumentCollectionUri(databaseName, graphName));
-        //}
+        private static async Task<DocumentCollection> GetCollection(DocumentClient client, string databaseName, string graphName)
+        {
+            return await client.ReadDocumentCollectionAsync(UriFactory.CreateDocumentCollectionUri(databaseName, graphName));
+        }
 
 
 

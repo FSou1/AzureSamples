@@ -1,17 +1,12 @@
-﻿using CosmosDb.GraphAPI.Recommender.Data.Entites;
-using Microsoft.Azure.Documents;
+﻿using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
-using Microsoft.Azure.Documents.Linq;
-using Microsoft.Azure.Graphs;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -23,7 +18,7 @@ namespace CosmosDb.GraphAPI.Recommender
         private readonly string _authKey;
 
         private readonly ConnectionPolicy _connectionPolicy;
-        private readonly DocumentClient _client;
+        public readonly DocumentClient _client;
 
         public GraphDatabase(string endpoint, string authKey)
         {
@@ -96,100 +91,76 @@ namespace CosmosDb.GraphAPI.Recommender
                 .AsEnumerable()
                 .FirstOrDefault();
         
+        private long _documentsInserted;
+        private bool _isProcessed;
+        private ConcurrentDictionary<int, double> _requestUnitsConsumed;
 
-        private int pendingTaskCount;
-        private long documentsInserted;
-        private ConcurrentDictionary<int, double> requestUnitsConsumed = new ConcurrentDictionary<int, double>();
-
-        public async Task Add<T>(string databaseName, DocumentCollection dataCollection, int collectionThroughput, List<T> list, Func<T, string> func)
+        public async Task AddData<T>(string databaseName, DocumentCollection dataCollection, int collectionThroughput, List<T> list, Func<T, object> func)
         {
-            //ResourceResponse<Document> response = await _client.CreateDocumentAsync(
-            //                UriFactory.CreateDocumentCollectionUri(databaseName, dataCollection.Id),
-            //new
-            //{
-            //    id = "David",
-            //    label = "person",
-            //    age = new[] {
-            //                                    new
-            //                                    {
-            //                                        id = Guid.NewGuid().ToString(),
-            //                                        _value = 48
-            //                                    }
-            //                    },
-            //    department = "support character"
-            //},
-            //                new RequestOptions() { });
-
+            _documentsInserted = 0;
+            _isProcessed = false;
+            _requestUnitsConsumed = new ConcurrentDictionary<int, double>();
 
             var taskCount = Math.Max(collectionThroughput / 1000, 1);
             taskCount = Math.Min(taskCount, 250);
 
+            taskCount = 100; // --------
+            ThreadPool.SetMinThreads(taskCount, taskCount);
 
-            pendingTaskCount = taskCount;
-            var tasks = new List<Task>();
-            tasks.Add(this.LogOutputStats());
-
+            
             int chunkSize = list.Count / taskCount;
-            for (var i = 0; i < taskCount; i++)
+            if (chunkSize == 0)
             {
-                var a = list.Skip(i * taskCount).Take(chunkSize).ToList();
+                chunkSize = list.Count;
+            }
 
-                tasks.Add(this.InsertDocument(databaseName, i, this._client, dataCollection, a, func));
+            var logStatTask = this.LogOutputStats();
+            var tasks = new List<Task>();
+            int i = 0;
+            while (i < taskCount && i * chunkSize < list.Count)
+            {
+                var chunk = list.Skip(i * chunkSize).Take(chunkSize).ToList();
+
+                tasks.Add(this.InsertDocument(i, databaseName, this._client, dataCollection, func, chunk));
+                ++i;
             }
 
             await Task.WhenAll(tasks);
+            _isProcessed = true;
+            await logStatTask;
         }
 
         
-        private async Task InsertDocument<T>(string databaseName, int taskId, DocumentClient client, DocumentCollection collection, List<T> list, Func<T, string> func)
+        private async Task InsertDocument<T>(int taskId, string dbName, DocumentClient client, DocumentCollection collection, Func<T, object> generateDocument, List<T> dataList)
         {
-            requestUnitsConsumed[taskId] = 0;
+            _requestUnitsConsumed[taskId] = 0;
 
             string partitionKeyProperty = collection.PartitionKey.Paths[0].Replace("/", "");
-            foreach (var item in list)
+            foreach (var data in dataList)
             {
-                var itemJson = JsonConvert.SerializeObject(item);
-                var dict = JsonConvert.DeserializeObject<Dictionary<string, object>>(itemJson);
-
+                Object document = generateDocument(data);
                 try
                 {
-                    var a = new
-                    {
-                        id = dict["Id"].ToString(),
-                        label = "brand",
-                        type = "vertex",
-
-                        name = new[] {
-                            new
-                            {
-                                id = Guid.NewGuid().ToString(),
-                                _value = dict["Name"]
-                            }
-                        }
-                    };
-
-                    ResourceResponse<Document> response = await client.CreateDocumentAsync(
-                            UriFactory.CreateDocumentCollectionUri(databaseName, collection.Id),
-                            a,
-                            new RequestOptions() { });
+                    var response = await client.CreateDocumentAsync(
+                            documentCollectionUri: UriFactory.CreateDocumentCollectionUri(dbName, collection.Id),
+                            document: document);
 
                     string partition = response.SessionToken.Split(':')[0];
-                    requestUnitsConsumed[taskId] += response.RequestCharge;
+                    _requestUnitsConsumed[taskId] += response.RequestCharge;
 
-                    Interlocked.Increment(ref this.documentsInserted);
+                    Interlocked.Increment(ref this._documentsInserted);
                 }
                 catch (Exception e)
                 {
-                    if (e is DocumentClientException)
+                    if (e is DocumentClientException dce)
                     {
-                        DocumentClientException de = (DocumentClientException)e;
-                        if (de.StatusCode != HttpStatusCode.Forbidden)
+                        if (dce.StatusCode != HttpStatusCode.Forbidden)
                         {
-                            Trace.TraceError("Failed to write {0}. Exception was {1}", JsonConvert.SerializeObject(dict), e);
+                            Trace.TraceError("Failed to write {0}. Exception was {1}", JsonConvert.SerializeObject(document), e);
                         }
                         else
                         {
-                            Interlocked.Increment(ref this.documentsInserted);
+                            Interlocked.Increment(ref this._documentsInserted);
                         }
                     }
                     else
@@ -198,22 +169,7 @@ namespace CosmosDb.GraphAPI.Recommender
                     }
                 }
             }
-
-            Interlocked.Decrement(ref this.pendingTaskCount);
         }
-
-        private static async Task ExecuteQuery(DocumentClient client, DocumentCollection graph, string query)
-        {
-            IDocumentQuery<dynamic> gremlinQuery = client.CreateGremlinQuery<dynamic>(graph, query);
-            while (gremlinQuery.HasMoreResults)
-            {
-                foreach (dynamic result in await gremlinQuery.ExecuteNextAsync())
-                {
-                    Console.WriteLine($"{JsonConvert.SerializeObject(result)}");
-                }
-            }
-        }
-
 
         private async Task LogOutputStats()
         {
@@ -224,36 +180,36 @@ namespace CosmosDb.GraphAPI.Recommender
             double ruPerSecond = 0;
             double ruPerMonth = 0;
 
-            Stopwatch watch = new Stopwatch();
-            watch.Start();
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
 
-            while (this.pendingTaskCount > 0)
+            while (!_isProcessed)
             {
                 await Task.Delay(TimeSpan.FromSeconds(1));
-                double seconds = watch.Elapsed.TotalSeconds;
+                double seconds = stopwatch.Elapsed.TotalSeconds;
 
                 requestUnits = 0;
-                foreach (int taskId in requestUnitsConsumed.Keys)
+                foreach (int taskId in _requestUnitsConsumed.Keys)
                 {
-                    requestUnits += requestUnitsConsumed[taskId];
+                    requestUnits += _requestUnitsConsumed[taskId];
                 }
 
-                long currentCount = this.documentsInserted;
+                long currentCount = this._documentsInserted;
                 ruPerSecond = (requestUnits / seconds);
                 ruPerMonth = ruPerSecond * 86400 * 30;
 
                 Console.WriteLine("Inserted {0} docs @ {1} writes/s, {2} RU/s ({3}B max monthly 1KB reads)",
                     currentCount,
-                    Math.Round(this.documentsInserted / seconds),
+                    Math.Round(this._documentsInserted / seconds),
                     Math.Round(ruPerSecond),
                     Math.Round(ruPerMonth / (1000 * 1000 * 1000)));
 
-                lastCount = documentsInserted;
+                lastCount = _documentsInserted;
                 lastSeconds = seconds;
                 lastRequestUnits = requestUnits;
             }
 
-            double totalSeconds = watch.Elapsed.TotalSeconds;
+            double totalSeconds = stopwatch.Elapsed.TotalSeconds;
             ruPerSecond = (requestUnits / totalSeconds);
             ruPerMonth = ruPerSecond * 86400 * 30;
 
@@ -262,7 +218,7 @@ namespace CosmosDb.GraphAPI.Recommender
             Console.WriteLine("--------------------------------------------------------------------- ");
             Console.WriteLine("Inserted {0} docs @ {1} writes/s, {2} RU/s ({3}B max monthly 1KB reads)",
                 lastCount,
-                Math.Round(this.documentsInserted / watch.Elapsed.TotalSeconds),
+                Math.Round(this._documentsInserted / stopwatch.Elapsed.TotalSeconds),
                 Math.Round(ruPerSecond),
                 Math.Round(ruPerMonth / (1000 * 1000 * 1000)));
             Console.WriteLine("--------------------------------------------------------------------- ");
