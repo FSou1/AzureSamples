@@ -95,7 +95,7 @@ namespace CosmosDb.GraphAPI.Recommender
         private bool _isProcessed;
         private ConcurrentDictionary<int, double> _requestUnitsConsumed;
 
-        public async Task AddData<T>(string databaseName, DocumentCollection dataCollection, int collectionThroughput, List<T> list, Func<T, object> func)
+        public async Task AddData<T>(string databaseName, DocumentCollection dataCollection, int collectionThroughput, List<T> list, Func<T, string, object> func)
         {
             _documentsInserted = 0;
             _isProcessed = false;
@@ -131,19 +131,21 @@ namespace CosmosDb.GraphAPI.Recommender
         }
 
         
-        private async Task InsertDocument<T>(int taskId, string dbName, DocumentClient client, DocumentCollection collection, Func<T, object> generateDocument, List<T> dataList)
+        private async Task InsertDocument<T>(int taskId, string dbName, DocumentClient client, DocumentCollection collection, Func<T, string, object> generateDocument, List<T> dataList)
         {
             _requestUnitsConsumed[taskId] = 0;
 
             string partitionKeyProperty = collection.PartitionKey.Paths[0].Replace("/", "");
+            Console.WriteLine(partitionKeyProperty);
             foreach (var data in dataList)
             {
-                Object document = generateDocument(data);
+                Object document = generateDocument(data, partitionKeyProperty);
                 try
                 {
                     var response = await client.CreateDocumentAsync(
                             documentCollectionUri: UriFactory.CreateDocumentCollectionUri(dbName, collection.Id),
-                            document: document);
+                            document: document
+                            );
 
                     string partition = response.SessionToken.Split(':')[0];
                     _requestUnitsConsumed[taskId] += response.RequestCharge;

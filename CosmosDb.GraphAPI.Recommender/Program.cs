@@ -104,6 +104,7 @@ namespace CosmosDb.GraphAPI.Recommender
 
                         //Console.Write("Sample name: ");
                         //sampleName = Console.ReadLine();
+
                         sampleName = "S10000";
                         var brands = DataProvider.ReadBrands(sampleName);
 
@@ -112,7 +113,7 @@ namespace CosmosDb.GraphAPI.Recommender
                             dataCollection: collection,
                             collectionThroughput: int.Parse(ConfigurationManager.AppSettings["CollectionThroughput"]),
                             brands,
-                            x => new
+                            (x, key) => new
                             {
                                 id = x.Id.ToString(),
                                 label = "brand",
@@ -123,7 +124,8 @@ namespace CosmosDb.GraphAPI.Recommender
                                         id = Guid.NewGuid().ToString(),
                                         _value = x.Name
                                     }
-                                }
+                                },
+                                partitionKeyProperty = key
                             });
 
                         var products = DataProvider.ReadProducts(sampleName);
@@ -133,7 +135,7 @@ namespace CosmosDb.GraphAPI.Recommender
                             dataCollection: collection,
                             collectionThroughput: int.Parse(ConfigurationManager.AppSettings["CollectionThroughput"]),
                             products,
-                            x => new
+                            (x, key) => new
                             {
                                 id = x.Id.ToString(),
                                 label = "product",
@@ -144,27 +146,33 @@ namespace CosmosDb.GraphAPI.Recommender
                                         id = Guid.NewGuid().ToString(),
                                         _value = x.Name
                                     }
-                                }
+                                },
+                                partitionKeyProperty = key
                             });
 
-                        await graphDb.AddData(
-                            databaseName: ConfigurationManager.AppSettings["DatabaseName"],
-                            dataCollection: collection,
-                            collectionThroughput: int.Parse(ConfigurationManager.AppSettings["CollectionThroughput"]),
-                            products,
-                            x => new
-                            {
-                                _isEdge = true,
-                                id = Guid.NewGuid().ToString(),
-                                label = "made_by",
+                        // EDGES BRAND-PRODUCT
 
-                                _vertexId = x.Id,
-                                _vertexLabel = "product",
+                        //await graphDb.AddData(
+                        //    databaseName: ConfigurationManager.AppSettings["DatabaseName"],
+                        //    dataCollection: collection,
+                        //    collectionThroughput: int.Parse(ConfigurationManager.AppSettings["CollectionThroughput"]),
+                        //    products,
+                        //    (x, key) => new
+                        //    {
+                        //        _isEdge = true,
+                        //        id = Guid.NewGuid().ToString(),
+                        //        label = "made_by",
 
-                                _sink = x.BrandId,
-                                _sinkLabel = "brand",
-                                _sinkPartition = "stereotype"
-                            });
+                        //        // FromVertex
+                        //        _vertexId = x.Id,
+                        //        _vertexLabel = "product",
+
+                        //        // ToVertex
+                        //        _sink = x.BrandId,
+                        //        _sinkLabel = "brand",
+
+                        //        partitionKeyProperty = key
+                        //    });
 
                         var people = DataProvider.ReadPeople(sampleName);
 
