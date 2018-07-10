@@ -1,13 +1,11 @@
-﻿using Microsoft.Azure.Documents;
+﻿using CosmosDb.GraphAPI.Recommender.Data.Entites;
+using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
-using Newtonsoft.Json;
+using Microsoft.Azure.Graphs.BulkImport;
+using Microsoft.Azure.Graphs.Elements;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Net;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace CosmosDb.GraphAPI.Recommender
@@ -35,7 +33,7 @@ namespace CosmosDb.GraphAPI.Recommender
                 });
         }
 
-
+        //+
         public async Task<Database> CreateDatabaseAsync(string databaseId)
         {
             return await _client.CreateDatabaseAsync(new Database { Id = databaseId });
@@ -50,6 +48,7 @@ namespace CosmosDb.GraphAPI.Recommender
                 .FirstOrDefault();
         }
 
+        //+
         public async Task DeleteDatabase(Database database)
         {
             if (database != null)
@@ -99,139 +98,110 @@ namespace CosmosDb.GraphAPI.Recommender
                     UriFactory.CreateDocumentCollectionUri(databaseId, collectionId));
         }
 
-        private long _documentsInserted;
-        private bool _isProcessed;
-        private ConcurrentDictionary<int, double> _requestUnitsConsumed;
 
-        public async Task AddData<T>(string databaseName, DocumentCollection dataCollection, int collectionThroughput, List<T> list, Func<T, string, object> func)
+
+        public async Task AddVertices(string databaseId, DocumentCollection collection, IEnumerable<Vertex> vertices)
         {
-            _documentsInserted = 0;
-            _isProcessed = false;
-            _requestUnitsConsumed = new ConcurrentDictionary<int, double>();
+            GraphBulkImport graphBulkImporter = new GraphBulkImport(_client, collection, useFlatProperty: false);
+            await graphBulkImporter.InitializeAsync();
 
-            var taskCount = Math.Max(collectionThroughput / 1000, 1);
-            taskCount = Math.Min(taskCount, 250);
+            GraphBulkImportResponse vResponse =
+                await graphBulkImporter.BulkImportVerticesAsync(
+                    vertices: vertices,
+                    enableUpsert: true);
+        }
 
-            taskCount = 100; // --------
-            ThreadPool.SetMinThreads(taskCount, taskCount);
+        public async Task AddEdges(string databaseId, DocumentCollection collection, IEnumerable<Edge> edges)
+        {
+            GraphBulkImport graphBulkImporter = new GraphBulkImport(_client, collection, useFlatProperty: false);
+            await graphBulkImporter.InitializeAsync();
 
-
-            int chunkSize = list.Count / taskCount;
-            if (chunkSize == 0)
-            {
-                chunkSize = list.Count;
-            }
-
-            var logStatTask = this.LogOutputStats();
-            var tasks = new List<Task>();
-            int i = 0;
-            while (i < taskCount && i * chunkSize < list.Count)
-            {
-                var chunk = list.Skip(i * chunkSize).Take(chunkSize).ToList();
-
-                tasks.Add(this.InsertDocument(i, databaseName, this._client, dataCollection, func, chunk));
-                ++i;
-            }
-
-            await Task.WhenAll(tasks);
-            _isProcessed = true;
-            await logStatTask;
+            GraphBulkImportResponse eResponse = 
+                await graphBulkImporter.BulkImportEdgesAsync(
+                    edges: edges,
+                    enableUpsert: true);
         }
 
 
-        private async Task InsertDocument<T>(int taskId, string dbName, DocumentClient client, DocumentCollection collection, Func<T, string, object> generateDocument, List<T> dataList)
+        public static IEnumerable<Vertex> GenerateBrandVertices(List<Brand> brands, string partitionKey)
         {
-            _requestUnitsConsumed[taskId] = 0;
-
-            string partitionKeyProperty = collection.PartitionKey.Paths[0].Replace("/", "");
-            //Console.WriteLine(partitionKeyProperty);
-            foreach (var data in dataList)
+            foreach (var brand in brands)
             {
-                Object document = generateDocument(data, partitionKeyProperty);
-                try
-                {
-                    var response = await client.CreateDocumentAsync(
-                            documentCollectionUri: UriFactory.CreateDocumentCollectionUri(dbName, collection.Id),
-                            document: document
-                            );
+                var vertex = new Vertex(brand.Id.ToString(), "brand");
+                vertex.AddProperty(new VertexProperty(partitionKey, brand.Id.ToString()));
+                vertex.AddProperty(new VertexProperty("name", brand.Name));
 
-                    string partition = response.SessionToken.Split(':')[0];
-                    _requestUnitsConsumed[taskId] += response.RequestCharge;
-
-                    Interlocked.Increment(ref this._documentsInserted);
-                }
-                catch (Exception e)
-                {
-                    if (e is DocumentClientException dce)
-                    {
-                        if (dce.StatusCode != HttpStatusCode.Forbidden)
-                        {
-                            Trace.TraceError("Failed to write {0}. Exception was {1}", JsonConvert.SerializeObject(document), e);
-                        }
-                        else
-                        {
-                            Interlocked.Increment(ref this._documentsInserted);
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine(e.Message);
-                    }
-                }
+                yield return vertex;
             }
         }
 
-        private async Task LogOutputStats()
+        public static IEnumerable<Vertex> GenerateProductVertices(List<Product> products, string partitionKey)
         {
-            long lastCount = 0;
-            double lastRequestUnits = 0;
-            double lastSeconds = 0;
-            double requestUnits = 0;
-            double ruPerSecond = 0;
-            double ruPerMonth = 0;
-
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
-
-            while (!_isProcessed)
+            foreach (var product in products)
             {
-                await Task.Delay(TimeSpan.FromSeconds(1));
-                double seconds = stopwatch.Elapsed.TotalSeconds;
+                var vertex = new Vertex(product.Id.ToString(), "product");
+                vertex.AddProperty(new VertexProperty(partitionKey, product.Id.ToString()));
+                vertex.AddProperty(new VertexProperty("name", product.Name));
 
-                requestUnits = 0;
-                foreach (int taskId in _requestUnitsConsumed.Keys)
-                {
-                    requestUnits += _requestUnitsConsumed[taskId];
-                }
-
-                long currentCount = this._documentsInserted;
-                ruPerSecond = (requestUnits / seconds);
-                ruPerMonth = ruPerSecond * 86400 * 30;
-
-                Console.WriteLine("Inserted {0} docs @ {1} writes/s, {2} RU/s ({3}B max monthly 1KB reads)",
-                    currentCount,
-                    Math.Round(this._documentsInserted / seconds),
-                    Math.Round(ruPerSecond),
-                    Math.Round(ruPerMonth / (1000 * 1000 * 1000)));
-
-                lastCount = _documentsInserted;
-                lastSeconds = seconds;
-                lastRequestUnits = requestUnits;
+                yield return vertex;
             }
+        }
 
-            double totalSeconds = stopwatch.Elapsed.TotalSeconds;
-            ruPerSecond = (requestUnits / totalSeconds);
-            ruPerMonth = ruPerSecond * 86400 * 30;
+        public static IEnumerable<Edge> GenerateBrandProductEdges(List<Product> products, string partitionKey)
+        {
+            foreach (var product in products)
+            {
+                var edge = new Edge(
+                    edgeId: Guid.NewGuid().ToString(),
+                    edgeLabel: "made_by",
 
-            Console.WriteLine();
-            Console.WriteLine("Summary:");
-            Console.WriteLine("--------------------------------------------------------------------- ");
-            Console.WriteLine("Inserted {0} docs @ {1} writes/s, {2} RU/s ({3}B max monthly 1KB reads)",
-                lastCount,
-                Math.Round(this._documentsInserted / stopwatch.Elapsed.TotalSeconds),
-                Math.Round(ruPerSecond),
-                Math.Round(ruPerMonth / (1000 * 1000 * 1000)));
-            Console.WriteLine("--------------------------------------------------------------------- ");
+                    outVertexId: product.BrandId.ToString(),
+                    inVertexId: product.Id.ToString(),
+
+                    outVertexLabel: "brand",
+                    inVertexLabel: "product",
+
+                    outVertexPartitionKey: product.BrandId.ToString(),
+                    inVertexPartitionKey: product.Id.ToString());
+
+                yield return edge;
+            }
+        }
+
+        public static IEnumerable<Vertex> GeneratePeopleVertices(List<Person> people, string partitionKey)
+        {
+            foreach (var person in people)
+            {
+                var vertex = new Vertex(person.Id.ToString(), "person");
+                vertex.AddProperty(new VertexProperty(partitionKey, person.Id.ToString()));
+                vertex.AddProperty(new VertexProperty("name", person.Name));
+
+                yield return vertex;
+            }
+        }
+
+        public static IEnumerable<Edge> GeneratePersonProductEdges(List<Person> people, string partitionKey)
+        {
+            foreach (var person in people)
+            {
+                foreach (var product in person.ProductIds)
+                {
+                    var edge = new Edge(
+                        edgeId: Guid.NewGuid().ToString(),
+                        edgeLabel: "bought",
+
+                        outVertexId: person.Id.ToString(),
+                        inVertexId: product.ToString(),
+
+                        outVertexLabel: "person",
+                        inVertexLabel: "product",
+
+                        outVertexPartitionKey: person.Id.ToString(),
+                        inVertexPartitionKey: product.ToString());
+
+                    yield return edge;
+                }
+            }
         }
     }
 }
