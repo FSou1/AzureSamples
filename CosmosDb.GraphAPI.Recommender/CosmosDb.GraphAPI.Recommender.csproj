@@ -125,7 +125,7 @@
     <Compile Include="Data\Entites\Brand.cs" />
     <Compile Include="Data\Entites\Person.cs" />
     <Compile Include="Data\Entites\Product.cs" />
-    <Compile Include="GraphDataBase.cs" />
+    <Compile Include="GraphDBHelper.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
