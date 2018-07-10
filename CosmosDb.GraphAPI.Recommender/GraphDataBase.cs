@@ -17,40 +17,35 @@ namespace CosmosDb.GraphAPI.Recommender
         private readonly string _endpoint;
         private readonly string _authKey;
 
-        private readonly ConnectionPolicy _connectionPolicy;
         public readonly DocumentClient _client;
 
-        public GraphDatabase(string endpoint, string authKey)
+        //+
+        public GraphDatabase(string documentServerEndPoint, string authKey)
         {
-            _endpoint = endpoint;
+            _endpoint = documentServerEndPoint;
             _authKey = authKey;
 
-            _connectionPolicy = new ConnectionPolicy
-            {
-                ConnectionMode = ConnectionMode.Direct,
-                ConnectionProtocol = Protocol.Tcp,
-                RequestTimeout = new TimeSpan(1, 0, 0),
-                MaxConnectionLimit = 1000,
-                RetryOptions = new RetryOptions
+            _client = new DocumentClient(
+                serviceEndpoint: new Uri(_endpoint),
+                authKeyOrResourceToken: _authKey,
+                connectionPolicy: new ConnectionPolicy
                 {
-                    MaxRetryAttemptsOnThrottledRequests = 10,
-                    MaxRetryWaitTimeInSeconds = 60
-                }
-            };
-
-            _client = new DocumentClient(new Uri(_endpoint), _authKey, _connectionPolicy);
+                    ConnectionMode = ConnectionMode.Direct,
+                    ConnectionProtocol = Protocol.Tcp
+                });
         }
 
 
-        public async Task<Database> CreateDatabase(string databaseName)
+        public async Task<Database> CreateDatabaseAsync(string databaseId)
         {
-            return await _client.CreateDatabaseAsync(new Database { Id = databaseName });
+            return await _client.CreateDatabaseAsync(new Database { Id = databaseId });
         }
 
-        public Database GetDatabase(string databaseName)
+        //+
+        public Database GetDatabase(string databaseId)
         {
             return _client.CreateDatabaseQuery()
-                .Where(d => d.Id == databaseName)
+                .Where(db => db.Id == databaseId)
                 .AsEnumerable()
                 .FirstOrDefault();
         }
@@ -63,34 +58,47 @@ namespace CosmosDb.GraphAPI.Recommender
             }
         }
 
-        public async Task<DocumentCollection> CreateCollection(Database database, string name, string partitionKey, int collectionThroughput)
+        //+
+        public async Task<DocumentCollection> CreateCollection(Database database, string collectionId, string partitionKey, int throughput, bool isPartitionedGraph)
         {
-            DocumentCollection collection = new DocumentCollection();
-            collection.Id = name;
-            collection.PartitionKey.Paths.Add(partitionKey);
+            var collection = new DocumentCollection
+            {
+                Id = collectionId
+            };
+
+            if (isPartitionedGraph)
+            {
+                if (string.IsNullOrWhiteSpace(partitionKey))
+                {
+                    throw new ArgumentNullException("PartionKey can't be null for a partitioned collection");
+                }
+
+                collection.PartitionKey.Paths.Add("/" + partitionKey);
+            }
 
             return await _client.CreateDocumentCollectionAsync(
-                    UriFactory.CreateDatabaseUri(database.Id),
-                    collection,
-                    new RequestOptions { OfferThroughput = collectionThroughput });
+                database.SelfLink,
+                collection,
+                new RequestOptions { OfferThroughput = throughput });
         }
 
-        public async Task DeleteCollection(Database database, string collectionName)
+        //++
+        public async Task DeleteCollection(string databaseId, string collectionid)
         {
-            var collection = this.GetCollection(database, collectionName);
+            var collection = await this.GetCollection(databaseId, collectionid);
             if (collection != null)
             {
                 await _client.DeleteDocumentCollectionAsync(collection.SelfLink);
             }
         }
 
-        public DocumentCollection GetCollection(Database database, string collectionName)
-            => GetDatabase(database.Id) == null ? null : _client
-                .CreateDocumentCollectionQuery(UriFactory.CreateDatabaseUri(database.Id))
-                .Where(c => c.Id == collectionName)
-                .AsEnumerable()
-                .FirstOrDefault();
-        
+        //+
+        public async Task<DocumentCollection> GetCollection(string databaseId, string collectionId)
+        {
+            return await _client.ReadDocumentCollectionAsync(
+                    UriFactory.CreateDocumentCollectionUri(databaseId, collectionId));
+        }
+
         private long _documentsInserted;
         private bool _isProcessed;
         private ConcurrentDictionary<int, double> _requestUnitsConsumed;
@@ -107,7 +115,7 @@ namespace CosmosDb.GraphAPI.Recommender
             taskCount = 100; // --------
             ThreadPool.SetMinThreads(taskCount, taskCount);
 
-            
+
             int chunkSize = list.Count / taskCount;
             if (chunkSize == 0)
             {
@@ -130,13 +138,13 @@ namespace CosmosDb.GraphAPI.Recommender
             await logStatTask;
         }
 
-        
+
         private async Task InsertDocument<T>(int taskId, string dbName, DocumentClient client, DocumentCollection collection, Func<T, string, object> generateDocument, List<T> dataList)
         {
             _requestUnitsConsumed[taskId] = 0;
 
             string partitionKeyProperty = collection.PartitionKey.Paths[0].Replace("/", "");
-            Console.WriteLine(partitionKeyProperty);
+            //Console.WriteLine(partitionKeyProperty);
             foreach (var data in dataList)
             {
                 Object document = generateDocument(data, partitionKeyProperty);

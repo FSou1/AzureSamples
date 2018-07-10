@@ -1,26 +1,29 @@
-﻿using CosmosDb.GraphAPI.Recommender.Data;
-using CosmosDb.GraphAPI.Recommender.Data.Entites;
-using Microsoft.Azure.Documents;
-using Microsoft.Azure.Documents.Client;
-using Microsoft.Azure.Documents.Linq;
-using Microsoft.Azure.Graphs;
-using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
-
-namespace CosmosDb.GraphAPI.Recommender
+﻿namespace CosmosDb.GraphAPI.Recommender
 {
+    extern alias graphs;
+
+    using CosmosDb.GraphAPI.Recommender.Data;
+    using Gremlin.Net;
+    using Microsoft.Azure.Documents;
+    using Microsoft.Azure.Documents.Client;
+    using Microsoft.Azure.Documents.Linq;
+    using Microsoft.Azure.Graphs.BulkImport;
+    using Microsoft.Azure.Graphs.Elements;
+    using Newtonsoft.Json;
+    using System;
+    using System.Collections.Generic;
+    using System.Configuration;
+    using System.Diagnostics;
+    using System.Linq;
+    using System.Text;
+    using System.Threading.Tasks;
+
     public class Program
     {
         public static async Task<int> Main(string[] args)
         {
             var graphDb = new GraphDatabase(
-                endpoint: ConfigurationManager.AppSettings["EndPointUrl"],
+                documentServerEndPoint: ConfigurationManager.AppSettings["DocumentServerEndPoint"],
                 authKey: ConfigurationManager.AppSettings["AuthKey"]);
 
             int menuchoice = -1;
@@ -86,71 +89,50 @@ namespace CosmosDb.GraphAPI.Recommender
                         #endregion
                         break;
                     case 2:
-                        await graphDb.CreateDatabase(
-                            databaseName: ConfigurationManager.AppSettings["DatabaseName"]);
+                        await graphDb.CreateDatabaseAsync(
+                            databaseId: ConfigurationManager.AppSettings["DatabaseId"]);
                         break;
                     case 3:
                         await graphDb.CreateCollection(
-                            database: graphDb.GetDatabase(ConfigurationManager.AppSettings["DatabaseName"]),
-                            name: ConfigurationManager.AppSettings["CollectionName"],
-                            partitionKey: ConfigurationManager.AppSettings["CollectionPartitionKey"],
-                            collectionThroughput: int.Parse(ConfigurationManager.AppSettings["CollectionThroughput"]));
+                            database: graphDb.GetDatabase(ConfigurationManager.AppSettings["DatabaseId"]),
+                            collectionId: ConfigurationManager.AppSettings["CollectionId"],
+                            partitionKey: ConfigurationManager.AppSettings["PartitionKeyName"],
+                            throughput: int.Parse(ConfigurationManager.AppSettings["CollectionThroughput"]),
+                            isPartitionedGraph: true);
                         break;
                     case 4:
-                        var collection = graphDb.GetCollection(
-                            database: graphDb.GetDatabase(ConfigurationManager.AppSettings["DatabaseName"]),
-                            collectionName: ConfigurationManager.AppSettings["CollectionName"]);
+                        //var collection = graphDb.GetCollection(
+                        //    database: graphDb.GetDatabase(ConfigurationManager.AppSettings["DatabaseName"]),
+                        //    collectionId: ConfigurationManager.AppSettings["CollectionName"]);
 
 
-                        //Console.Write("Sample name: ");
-                        //sampleName = Console.ReadLine();
+                        ////Console.Write("Sample name: ");
+                        ////sampleName = Console.ReadLine();
 
-                        sampleName = "S10000";
-                        var brands = DataProvider.ReadBrands(sampleName);
+                        //sampleName = "S10000";
+                        //var brands = DataProvider.ReadBrands(sampleName);
 
-                        await graphDb.AddData(
-                            databaseName: ConfigurationManager.AppSettings["DatabaseName"],
-                            dataCollection: collection,
-                            collectionThroughput: int.Parse(ConfigurationManager.AppSettings["CollectionThroughput"]),
-                            brands,
-                            (x, key) => new
-                            {
-                                id = x.Id.ToString(),
-                                label = "brand",
-                                type = "vertex",
-                                name = new[] {
-                                    new
-                                    {
-                                        id = Guid.NewGuid().ToString(),
-                                        _value = x.Name
-                                    }
-                                },
-                                partitionKeyProperty = key
-                            });
+                        //await graphDb.AddData(
+                        //    databaseName: ConfigurationManager.AppSettings["DatabaseName"],
+                        //    dataCollection: collection,
+                        //    collectionThroughput: int.Parse(ConfigurationManager.AppSettings["CollectionThroughput"]),
+                        //    brands,
+                        //    (x, key) => new
+                        //    {
+                        //        id = x.Id.ToString(),
+                        //        label = "brand",
+                        //        type = "vertex",
+                        //        name = new[] {
+                        //            new
+                        //            {
+                        //                id = Guid.NewGuid().ToString(),
+                        //                _value = x.Name
+                        //            }
+                        //        },
+                        //        partitionKeyProperty = key
+                        //    });
 
-                        var products = DataProvider.ReadProducts(sampleName);
-
-                        await graphDb.AddData(
-                            databaseName: ConfigurationManager.AppSettings["DatabaseName"],
-                            dataCollection: collection,
-                            collectionThroughput: int.Parse(ConfigurationManager.AppSettings["CollectionThroughput"]),
-                            products,
-                            (x, key) => new
-                            {
-                                id = x.Id.ToString(),
-                                label = "product",
-                                type = "vertex",
-                                name = new[] {
-                                    new
-                                    {
-                                        id = Guid.NewGuid().ToString(),
-                                        _value = x.Name
-                                    }
-                                },
-                                partitionKeyProperty = key
-                            });
-
-                        // EDGES BRAND-PRODUCT
+                        //var products = DataProvider.ReadProducts(sampleName);
 
                         //await graphDb.AddData(
                         //    databaseName: ConfigurationManager.AppSettings["DatabaseName"],
@@ -159,94 +141,99 @@ namespace CosmosDb.GraphAPI.Recommender
                         //    products,
                         //    (x, key) => new
                         //    {
-                        //        _isEdge = true,
-                        //        id = Guid.NewGuid().ToString(),
-                        //        label = "made_by",
-
-                        //        // FromVertex
-                        //        _vertexId = x.Id,
-                        //        _vertexLabel = "product",
-
-                        //        // ToVertex
-                        //        _sink = x.BrandId,
-                        //        _sinkLabel = "brand",
-
+                        //        id = x.Id.ToString(),
+                        //        label = "product",
+                        //        type = "vertex",
+                        //        name = new[] {
+                        //            new
+                        //            {
+                        //                id = Guid.NewGuid().ToString(),
+                        //                _value = x.Name
+                        //            }
+                        //        },
                         //        partitionKeyProperty = key
                         //    });
 
-                        var people = DataProvider.ReadPeople(sampleName);
+                        //// EDGES BRAND-PRODUCT
+
+                        ////await graphDb.AddData(
+                        ////    databaseName: ConfigurationManager.AppSettings["DatabaseName"],
+                        ////    dataCollection: collection,
+                        ////    collectionThroughput: int.Parse(ConfigurationManager.AppSettings["CollectionThroughput"]),
+                        ////    products,
+                        ////    (x, key) => new
+                        ////    {
+                        ////        _isEdge = true,
+                        ////        id = Guid.NewGuid().ToString(),
+                        ////        label = "made_by",
+
+                        ////        // FromVertex
+                        ////        _vertexId = x.Id,
+                        ////        _vertexLabel = "product",
+
+                        ////        // ToVertex
+                        ////        _sink = x.BrandId,
+                        ////        _sinkLabel = "brand",
+
+                        ////        partitionKeyProperty = key
+                        ////    });
+
+                        //var people = DataProvider.ReadPeople(sampleName);
 
 
-                        return 0;
+                        //return 0;
 
-                        var cl = GetClient();
-                        var co = await GetCollection(cl, "graphdbnonpart", "nonpart");
+                        //var cl = GetClient();
+                        //var co = await GetCollection(cl, "graphdbnonpart", "nonpart");
 
-                        var brand = $"g.addV('brand').property('id', '{1}').property('name', '{"NOKIA"}')";
-                        var product1 = $"g.addV('product').property('id', '{10}').property('name', '{"N95"}').addE('made_by').to(g.V('{1}'))";
-                        //var product2 = $"g.addV('product').property('id', '{11}').property('name', '{"N96"}').addE('made_by').to(g.V('{1}'))";
-                        var product2 = $"g.addV('product').property('id', '{11}').property('name', '{"N96"}')";
+                        //var brand = $"g.addV('brand').property('id', '{1}').property('name', '{"NOKIA"}')";
+                        //var product1 = $"g.addV('product').property('id', '{10}').property('name', '{"N95"}').addE('made_by').to(g.V('{1}'))";
+                        ////var product2 = $"g.addV('product').property('id', '{11}').property('name', '{"N96"}').addE('made_by').to(g.V('{1}'))";
+                        //var product2 = $"g.addV('product').property('id', '{11}').property('name', '{"N96"}')";
 
-                        //var person = $"g.addV('person').property('id', '{100}').property('name', '{"Ruslan"}')";
+                        ////var person = $"g.addV('person').property('id', '{100}').property('name', '{"Ruslan"}')";
 
-                        //var personP1 = $"g.V('{100}').addE('bought').to(g.V('{10}'))";
-                        //var personP2 = $"g.V('{100}').addE('bought').to(g.V('{11}'))";
-
-
-                        ExecuteQuery(cl, co, brand).Wait();
-                        ExecuteQuery(cl, co, product1).Wait();
-                        ExecuteQuery(cl, co, product2).Wait();
+                        ////var personP1 = $"g.V('{100}').addE('bought').to(g.V('{10}'))";
+                        ////var personP2 = $"g.V('{100}').addE('bought').to(g.V('{11}'))";
 
 
-                        //ExecuteQuery(cl, co, person).Wait();
-                        //ExecuteQuery(cl, co, personP1).Wait();
-                        //ExecuteQuery(cl, co, personP2).Wait();
+                        //ExecuteQuery(cl, co, brand).Wait();
+                        //ExecuteQuery(cl, co, product1).Wait();
+                        //ExecuteQuery(cl, co, product2).Wait();
 
 
-                        var obj1 = new
-                        {
-                            _isEdge = true,
-                            id = Guid.NewGuid().ToString(),
-                            label = "made_by",
-
-                            _vertexId = "11",                  // fromV
-                            _vertexLabel = "product",
-
-                            _sink = "1",                       // toV
-                            _sinkLabel = "brand",
-                            _sinkPartition = "stereotype"
-                        };
-
-                        ResourceResponse<Document> response = await cl.CreateDocumentAsync(
-                        UriFactory.CreateDocumentCollectionUri("graphdbnonpart", "nonpart"),
-                            obj1,
-                            new RequestOptions() { });
+                        ////ExecuteQuery(cl, co, person).Wait();
+                        ////ExecuteQuery(cl, co, personP1).Wait();
+                        ////ExecuteQuery(cl, co, personP2).Wait();
 
 
+                        //var obj1 = new
+                        //{
+                        //    _isEdge = true,
+                        //    id = Guid.NewGuid().ToString(),
+                        //    label = "made_by",
 
+                        //    _vertexId = "11",                  // fromV
+                        //    _vertexLabel = "product",
 
+                        //    _sink = "1",                       // toV
+                        //    _sinkLabel = "brand",
+                        //    _sinkPartition = "stereotype"
+                        //};
 
-
-
-
-
-
-                        //var sw = new Stopwatch();
-                        //sw.Start();
-                        //AddBrands(cl, co, brands);
-                        //AddProducts(graphDb._client, collection, products);
-                        ////AddPersons(client, collection, people);
-                        ////AddPersonProducts(client, collection, people);
-                        //Console.WriteLine(sw.Elapsed);
+                        //ResourceResponse<Document> response = await cl.CreateDocumentAsync(
+                        //UriFactory.CreateDocumentCollectionUri("graphdbnonpart", "nonpart"),
+                        //    obj1,
+                        //    new RequestOptions() { });
                         break;
                     case 7:
                         await graphDb.DeleteDatabase(
-                            database: graphDb.GetDatabase(ConfigurationManager.AppSettings["DatabaseName"]));
+                            database: graphDb.GetDatabase(ConfigurationManager.AppSettings["DatabaseId"]));
                         break;
                     case 8:
                         await graphDb.DeleteCollection(
-                            database: graphDb.GetDatabase(ConfigurationManager.AppSettings["DatabaseName"]),
-                            collectionName: ConfigurationManager.AppSettings["CollectionName"]);
+                            databaseId: ConfigurationManager.AppSettings["DatabaseId"],
+                            collectionid: ConfigurationManager.AppSettings["CollectionId"]);
                         break;
                     case 9:
                         //await CleanupAsync(client, collection);
@@ -265,137 +252,137 @@ namespace CosmosDb.GraphAPI.Recommender
 
 
 
-        private static void RunQueryByChunks<T>(DocumentClient client, DocumentCollection graph, List<T> list, Func<T, string> func, int chunkSize = 50)
-        {
-            var chunksCount = list.Count / chunkSize;
-            if (list.Count % chunkSize != 0)
-            {
-                ++chunksCount;
-            }
+        //private static void RunQueryByChunks<T>(DocumentClient client, DocumentCollection graph, List<T> list, Func<T, string> func, int chunkSize = 50)
+        //{
+        //    var chunksCount = list.Count / chunkSize;
+        //    if (list.Count % chunkSize != 0)
+        //    {
+        //        ++chunksCount;
+        //    }
 
-            for (int i = 0; i < chunksCount; ++i)
-            {
-                var tasksSize = chunkSize;
-                if (tasksSize > list.Count || chunkSize * i > list.Count)
-                {
-                    tasksSize = list.Count % chunkSize;
-                }
-                var tasks = new Task[tasksSize];
-                var offset = i * chunkSize;
-                for (int j = 0; j < tasks.Length; ++j)
-                {
-                    var queryString = func(list[offset + j]);
-                    tasks[j] = ExecuteQuery(client, graph, queryString);
-                }
-                Task.WaitAll(tasks);
-            }
-        }
+        //    for (int i = 0; i < chunksCount; ++i)
+        //    {
+        //        var tasksSize = chunkSize;
+        //        if (tasksSize > list.Count || chunkSize * i > list.Count)
+        //        {
+        //            tasksSize = list.Count % chunkSize;
+        //        }
+        //        var tasks = new Task[tasksSize];
+        //        var offset = i * chunkSize;
+        //        for (int j = 0; j < tasks.Length; ++j)
+        //        {
+        //            var queryString = func(list[offset + j]);
+        //            tasks[j] = ExecuteQuery(client, graph, queryString);
+        //        }
+        //        Task.WaitAll(tasks);
+        //    }
+        //}
 
-        private static void RunQueryByChunks(DocumentClient client, DocumentCollection graph, List<string> queriesList, int chunkSize = 50)
-        {
-            var chunksCount = queriesList.Count / chunkSize;
-            if (queriesList.Count % chunkSize != 0)
-            {
-                ++chunksCount;
-            }
+        //private static void RunQueryByChunks(DocumentClient client, DocumentCollection graph, List<string> queriesList, int chunkSize = 50)
+        //{
+        //    var chunksCount = queriesList.Count / chunkSize;
+        //    if (queriesList.Count % chunkSize != 0)
+        //    {
+        //        ++chunksCount;
+        //    }
 
-            for (int i = 0; i < chunksCount; ++i)
-            {
-                var tasksSize = chunkSize;
-                if (tasksSize > queriesList.Count || chunkSize * i > queriesList.Count)
-                {
-                    tasksSize = queriesList.Count % chunkSize;
-                }
-                var tasks = new Task[tasksSize];
-                var offset = i * chunkSize;
-                for (int j = 0; j < tasks.Length; ++j)
-                {
-                    tasks[j] = ExecuteQuery(client, graph, queriesList[offset + j]);
-                }
-                Task.WaitAll(tasks);
-            }
-        }
+        //    for (int i = 0; i < chunksCount; ++i)
+        //    {
+        //        var tasksSize = chunkSize;
+        //        if (tasksSize > queriesList.Count || chunkSize * i > queriesList.Count)
+        //        {
+        //            tasksSize = queriesList.Count % chunkSize;
+        //        }
+        //        var tasks = new Task[tasksSize];
+        //        var offset = i * chunkSize;
+        //        for (int j = 0; j < tasks.Length; ++j)
+        //        {
+        //            tasks[j] = ExecuteQuery(client, graph, queriesList[offset + j]);
+        //        }
+        //        Task.WaitAll(tasks);
+        //    }
+        //}
 
 
-        private static void AddBrands(
-            DocumentClient client,
-            DocumentCollection graph,
-            List<Brand> brands)
-        {
-            RunQueryByChunks(client, graph, brands, x => $"g.addV('brand').property('id', '{x.Id}').property('name', '{x.Name}')");
-        }
+        //private static void AddBrands(
+        //    DocumentClient client,
+        //    DocumentCollection graph,
+        //    List<Brand> brands)
+        //{
+        //    RunQueryByChunks(client, graph, brands, x => $"g.addV('brand').property('id', '{x.Id}').property('name', '{x.Name}')");
+        //}
 
-        private static void AddProducts(
-            DocumentClient client,
-            DocumentCollection graph,
-            List<Product> products)
-        {
-            RunQueryByChunks(client, graph, products, x => $"g.addV('product').property('id', '{x.Id}').property('name', '{x.Name}').addE('made_by').to(g.V('{x.BrandId}'))", 10);
-        }
+        //private static void AddProducts(
+        //    DocumentClient client,
+        //    DocumentCollection graph,
+        //    List<Product> products)
+        //{
+        //    RunQueryByChunks(client, graph, products, x => $"g.addV('product').property('id', '{x.Id}').property('name', '{x.Name}').addE('made_by').to(g.V('{x.BrandId}'))", 10);
+        //}
 
-        private static void AddPersons(
-            DocumentClient client,
-            DocumentCollection graph,
-            List<Person> people)
-        {
-            RunQueryByChunks(client, graph, people, x => $"g.addV('person').property('id', '{x.Id}').property('name', '{x.Name}')", 1150);
-        }
+        //private static void AddPersons(
+        //    DocumentClient client,
+        //    DocumentCollection graph,
+        //    List<Person> people)
+        //{
+        //    RunQueryByChunks(client, graph, people, x => $"g.addV('person').property('id', '{x.Id}').property('name', '{x.Name}')", 1150);
+        //}
 
-        private static void AddPersonProducts(
-            DocumentClient client,
-            DocumentCollection graph,
-            List<Person> people)
-        {
-            const string template = "g.V('{0}').addE('bought').to(g.V('{1}'))";
+        //private static void AddPersonProducts(
+        //    DocumentClient client,
+        //    DocumentCollection graph,
+        //    List<Person> people)
+        //{
+        //    const string template = "g.V('{0}').addE('bought').to(g.V('{1}'))";
 
-            foreach (var person in people)
-            {
-                var list = new List<string>();
+        //    foreach (var person in people)
+        //    {
+        //        var list = new List<string>();
 
-                foreach (var productId in person.ProductIds)
-                {
-                    list.Add(string.Format(template, person.Id, productId));
-                }
+        //        foreach (var productId in person.ProductIds)
+        //        {
+        //            list.Add(string.Format(template, person.Id, productId));
+        //        }
 
-                RunQueryByChunks(client, graph, list, 50);
-            }
-        }
+        //        RunQueryByChunks(client, graph, list, 50);
+        //    }
+        //}
 
-        private static async Task CleanupAsync(DocumentClient client, DocumentCollection graph)
-        {
-            const string query = "g.V().drop()";
+        //private static async Task CleanupAsync(DocumentClient client, DocumentCollection graph)
+        //{
+        //    const string query = "g.V().drop()";
 
-            await ExecuteQuery(client, graph, query);
-        }
+        //    await ExecuteQuery(client, graph, query);
+        //}
 
-        private static async Task ExecuteQuery(DocumentClient client, DocumentCollection graph, string query)
-        {
-            IDocumentQuery<dynamic> gremlinQuery = client.CreateGremlinQuery<dynamic>(graph, query);
-            while (gremlinQuery.HasMoreResults)
-            {
-                foreach (dynamic result in await gremlinQuery.ExecuteNextAsync())
-                {
-                    Console.WriteLine($"{JsonConvert.SerializeObject(result)}");
-                }
-            }
-        }
+        //private static async Task ExecuteQuery(DocumentClient client, DocumentCollection graph, string query)
+        //{
+        //    IDocumentQuery<dynamic> gremlinQuery = client.CreateGremlinQuery<dynamic>(graph, query);
+        //    while (gremlinQuery.HasMoreResults)
+        //    {
+        //        foreach (dynamic result in await gremlinQuery.ExecuteNextAsync())
+        //        {
+        //            Console.WriteLine($"{JsonConvert.SerializeObject(result)}");
+        //        }
+        //    }
+        //}
 
-        private static DocumentClient GetClient()
-        {
-            string endpoint = ConfigurationManager.AppSettings["EndPointUrl"];
-            string authKey = ConfigurationManager.AppSettings["AuthKey"];
+        //private static DocumentClient GetClient()
+        //{
+        //    string endpoint = ConfigurationManager.AppSettings["EndPointUrl"];
+        //    string authKey = ConfigurationManager.AppSettings["AuthKey"];
 
-            return new DocumentClient(new Uri(endpoint), authKey, new ConnectionPolicy
-            {
-                ConnectionMode = ConnectionMode.Direct,
-                ConnectionProtocol = Protocol.Tcp
-            });
-        }
+        //    return new DocumentClient(new Uri(endpoint), authKey, new ConnectionPolicy
+        //    {
+        //        ConnectionMode = ConnectionMode.Direct,
+        //        ConnectionProtocol = Protocol.Tcp
+        //    });
+        //}
 
-        private static async Task<DocumentCollection> GetCollection(DocumentClient client, string databaseName, string graphName)
-        {
-            return await client.ReadDocumentCollectionAsync(UriFactory.CreateDocumentCollectionUri(databaseName, graphName));
-        }
+        //private static async Task<DocumentCollection> GetCollection(DocumentClient client, string databaseName, string graphName)
+        //{
+        //    return await client.ReadDocumentCollectionAsync(UriFactory.CreateDocumentCollectionUri(databaseName, graphName));
+        //}
 
 
 
