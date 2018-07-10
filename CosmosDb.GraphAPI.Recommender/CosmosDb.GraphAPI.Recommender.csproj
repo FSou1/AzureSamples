@@ -64,20 +64,20 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.CosmosDB.BulkExecutor">
-      <HintPath>..\usersPackages\Microsoft.Azure.Graphs.BulkImport.0.0.1-preview\lib\net45\Microsoft.Azure.CosmosDB.BulkExecutor.dll</HintPath>
+      <HintPath>..\packages.Custom\Microsoft.Azure.Graphs.BulkImport.0.0.1-preview\lib\net45\Microsoft.Azure.CosmosDB.BulkExecutor.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.Documents.Client, Version=1.19.0.0, Culture=neutral, PublicKeyToken=69c3241e6f0468ca, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\usersPackages\Microsoft.Azure.Graphs.BulkImport.0.0.1-preview\lib\net45\Microsoft.Azure.Documents.Client.dll</HintPath>
+      <HintPath>..\packages.Custom\Microsoft.Azure.Graphs.BulkImport.0.0.1-preview\lib\net45\Microsoft.Azure.Documents.Client.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.Graphs, Version=1.19.0.0, Culture=neutral, PublicKeyToken=69c3241e6f0468ca, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\usersPackages\Microsoft.Azure.Graphs.BulkImport.0.0.1-preview\lib\net45\Microsoft.Azure.Graphs.dll</HintPath>
+      <HintPath>..\packages.Custom\Microsoft.Azure.Graphs.BulkImport.0.0.1-preview\lib\net45\Microsoft.Azure.Graphs.dll</HintPath>
       <Aliases>graphs</Aliases>
     </Reference>
     <Reference Include="Microsoft.Azure.Graphs.BulkImport, Version=1.19.0.0, Culture=neutral, PublicKeyToken=69c3241e6f0468ca, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\usersPackages\Microsoft.Azure.Graphs.BulkImport.0.0.1-preview\lib\net45\Microsoft.Azure.Graphs.BulkImport.dll</HintPath>
+      <HintPath>..\packages.Custom\Microsoft.Azure.Graphs.BulkImport.0.0.1-preview\lib\net45\Microsoft.Azure.Graphs.BulkImport.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Extensions.Configuration, Version=2.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Extensions.Configuration.2.0.0\lib\netstandard2.0\Microsoft.Extensions.Configuration.dll</HintPath>
@@ -129,7 +129,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
+    <None Include="App.config">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
