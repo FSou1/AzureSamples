@@ -10,22 +10,13 @@ using System.Threading.Tasks;
 
 namespace CosmosDb.GraphAPI.Recommender
 {
-    public class GraphDatabase
+    public static class GraphDBHelper
     {
-        private readonly string _endpoint;
-        private readonly string _authKey;
-
-        public readonly DocumentClient _client;
-
-        //+
-        public GraphDatabase(string documentServerEndPoint, string authKey)
+        public static DocumentClient CreateClient(string documentServerEndPoint, string authKey)
         {
-            _endpoint = documentServerEndPoint;
-            _authKey = authKey;
-
-            _client = new DocumentClient(
-                serviceEndpoint: new Uri(_endpoint),
-                authKeyOrResourceToken: _authKey,
+            return new DocumentClient(
+                serviceEndpoint: new Uri(documentServerEndPoint),
+                authKeyOrResourceToken: authKey,
                 connectionPolicy: new ConnectionPolicy
                 {
                     ConnectionMode = ConnectionMode.Direct,
@@ -33,32 +24,33 @@ namespace CosmosDb.GraphAPI.Recommender
                 });
         }
 
-        //+
-        public async Task<Database> CreateDatabaseAsync(string databaseId)
+        // Database
+
+        public static async Task<Database> CreateDatabaseAsync(DocumentClient documentClient, string databaseId)
         {
-            return await _client.CreateDatabaseAsync(new Database { Id = databaseId });
+            return await documentClient.CreateDatabaseAsync(new Database { Id = databaseId });
         }
 
-        //+
-        public Database GetDatabase(string databaseId)
+        public static Database GetDatabase(DocumentClient documentClient, string databaseId)
         {
-            return _client.CreateDatabaseQuery()
+            return documentClient.CreateDatabaseQuery()
                 .Where(db => db.Id == databaseId)
                 .AsEnumerable()
                 .FirstOrDefault();
         }
 
-        //+
-        public async Task DeleteDatabase(Database database)
+        public static async Task DeleteDatabaseAsync(DocumentClient documentClient, Database database)
         {
             if (database != null)
             {
-                await _client.DeleteDatabaseAsync(database.SelfLink);
+                await documentClient.DeleteDatabaseAsync(database.SelfLink);
             }
         }
 
-        //+
-        public async Task<DocumentCollection> CreateCollection(Database database, string collectionId, string partitionKey, int throughput, bool isPartitionedGraph)
+        // Collection
+
+        public static async Task<DocumentCollection> CreateCollectionAsync(DocumentClient documentClient, 
+            Database database, string collectionId, string partitionKey, int throughput, bool isPartitionedGraph)
         {
             var collection = new DocumentCollection
             {
@@ -75,53 +67,56 @@ namespace CosmosDb.GraphAPI.Recommender
                 collection.PartitionKey.Paths.Add("/" + partitionKey);
             }
 
-            return await _client.CreateDocumentCollectionAsync(
+            return await documentClient.CreateDocumentCollectionAsync(
                 database.SelfLink,
                 collection,
                 new RequestOptions { OfferThroughput = throughput });
         }
 
-        //++
-        public async Task DeleteCollection(string databaseId, string collectionid)
+        public static async Task DeleteCollectionAsync(DocumentClient documentClient, DocumentCollection documentCollection)
         {
-            var collection = await this.GetCollection(databaseId, collectionid);
-            if (collection != null)
+            if (documentCollection != null)
             {
-                await _client.DeleteDocumentCollectionAsync(collection.SelfLink);
+                await documentClient.DeleteDocumentCollectionAsync(documentCollection.SelfLink);
             }
         }
 
-        //+
-        public async Task<DocumentCollection> GetCollection(string databaseId, string collectionId)
+
+        public static async Task<DocumentCollection> GetCollectionAsync(DocumentClient documentClient, 
+            string databaseId, string collectionId)
         {
-            return await _client.ReadDocumentCollectionAsync(
-                    UriFactory.CreateDocumentCollectionUri(databaseId, collectionId));
+            return await documentClient.ReadDocumentCollectionAsync(
+                UriFactory.CreateDocumentCollectionUri(databaseId, collectionId));
+        }
+
+        // 
+        
+        public static async Task<GraphBulkImport> CreateAndInitGraphImporterAsync(DocumentClient documentClient,
+            string databaseId, DocumentCollection collection)
+        {
+            var graphBulkImport = new GraphBulkImport(documentClient, collection, useFlatProperty: false);
+            await graphBulkImport.InitializeAsync();
+            return graphBulkImport;
+        }
+
+        public static async Task<GraphBulkImportResponse> AddVerticesAsync(GraphBulkImport graphImporter, 
+            IEnumerable<Vertex> vertices)
+        {
+            return await graphImporter.BulkImportVerticesAsync(
+                vertices: vertices,
+                enableUpsert: true);
+        }
+
+        public static async Task<GraphBulkImportResponse> AddEdgesAsync(GraphBulkImport graphImporter, 
+            IEnumerable<Edge> edges)
+        {
+            return await graphImporter.BulkImportEdgesAsync(
+                edges: edges,
+                enableUpsert: true);
         }
 
 
-
-        public async Task AddVertices(string databaseId, DocumentCollection collection, IEnumerable<Vertex> vertices)
-        {
-            GraphBulkImport graphBulkImporter = new GraphBulkImport(_client, collection, useFlatProperty: false);
-            await graphBulkImporter.InitializeAsync();
-
-            GraphBulkImportResponse vResponse =
-                await graphBulkImporter.BulkImportVerticesAsync(
-                    vertices: vertices,
-                    enableUpsert: true);
-        }
-
-        public async Task AddEdges(string databaseId, DocumentCollection collection, IEnumerable<Edge> edges)
-        {
-            GraphBulkImport graphBulkImporter = new GraphBulkImport(_client, collection, useFlatProperty: false);
-            await graphBulkImporter.InitializeAsync();
-
-            GraphBulkImportResponse eResponse = 
-                await graphBulkImporter.BulkImportEdgesAsync(
-                    edges: edges,
-                    enableUpsert: true);
-        }
-
+        // Genearting
 
         public static IEnumerable<Vertex> GenerateBrandVertices(List<Brand> brands, string partitionKey)
         {
@@ -147,7 +142,19 @@ namespace CosmosDb.GraphAPI.Recommender
             }
         }
 
-        public static IEnumerable<Edge> GenerateBrandProductEdges(List<Product> products, string partitionKey)
+        public static IEnumerable<Vertex> GeneratePeopleVertices(List<Person> people, string partitionKey)
+        {
+            foreach (var person in people)
+            {
+                var vertex = new Vertex(person.Id.ToString(), "person");
+                vertex.AddProperty(new VertexProperty(partitionKey, person.Id.ToString()));
+                vertex.AddProperty(new VertexProperty("name", person.Name));
+
+                yield return vertex;
+            }
+        }
+
+        public static IEnumerable<Edge> GenerateBrandProductsEdges(List<Product> products)
         {
             foreach (var product in products)
             {
@@ -168,19 +175,7 @@ namespace CosmosDb.GraphAPI.Recommender
             }
         }
 
-        public static IEnumerable<Vertex> GeneratePeopleVertices(List<Person> people, string partitionKey)
-        {
-            foreach (var person in people)
-            {
-                var vertex = new Vertex(person.Id.ToString(), "person");
-                vertex.AddProperty(new VertexProperty(partitionKey, person.Id.ToString()));
-                vertex.AddProperty(new VertexProperty("name", person.Name));
-
-                yield return vertex;
-            }
-        }
-
-        public static IEnumerable<Edge> GeneratePersonProductEdges(List<Person> people, string partitionKey)
+        public static IEnumerable<Edge> GeneratePersonProductsEdges(List<Person> people)
         {
             foreach (var person in people)
             {

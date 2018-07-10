@@ -1,20 +1,25 @@
-﻿namespace CosmosDb.GraphAPI.Recommender
+﻿extern alias graphs;
+using CosmosDb.GraphAPI.Recommender.Data;
+using System;
+using System.Configuration;
+using System.Diagnostics;
+using System.Threading.Tasks;
+
+namespace CosmosDb.GraphAPI.Recommender
 {
-    extern alias graphs;
-
-    using CosmosDb.GraphAPI.Recommender.Data;
-    using System;
-    using System.Configuration;
-    using System.Diagnostics;
-    using System.Threading.Tasks;
-
     public class Program
     {
         public static async Task<int> Main(string[] args)
         {
-            var graphDb = new GraphDatabase(
+            var sw = new Stopwatch();
+
+            var docClient = GraphDBHelper.CreateClient(
                 documentServerEndPoint: ConfigurationManager.AppSettings["DocumentServerEndPoint"],
                 authKey: ConfigurationManager.AppSettings["AuthKey"]);
+
+            var databaseId = ConfigurationManager.AppSettings["DatabaseId"];
+            var collectionId = ConfigurationManager.AppSettings["CollectionId"];
+            var partitionKey = ConfigurationManager.AppSettings["PartitionKeyName"];
 
             int menuchoice = -1;
             while (menuchoice != 0)
@@ -28,7 +33,6 @@
 
                 Console.WriteLine("7. Delete database");
                 Console.WriteLine("8. Delete graph");
-                Console.WriteLine("9. Cleanup graph");
                 Console.WriteLine("0. Exit");
 
                 int.TryParse(Console.ReadLine(), out menuchoice);
@@ -79,82 +83,78 @@
                         #endregion
                         break;
                     case 2:
-                        await graphDb.CreateDatabaseAsync(
-                            databaseId: ConfigurationManager.AppSettings["DatabaseId"]);
+                        await GraphDBHelper.CreateDatabaseAsync(
+                            documentClient: docClient,
+                            databaseId: databaseId);
                         break;
                     case 3:
-                        await graphDb.CreateCollection(
-                            database: graphDb.GetDatabase(ConfigurationManager.AppSettings["DatabaseId"]),
-                            collectionId: ConfigurationManager.AppSettings["CollectionId"],
-                            partitionKey: ConfigurationManager.AppSettings["PartitionKeyName"],
+                        await GraphDBHelper.CreateCollectionAsync(
+                            documentClient: docClient,
+                            database: GraphDBHelper.GetDatabase(docClient, databaseId),
+                            collectionId: collectionId,
+                            partitionKey: partitionKey,
                             throughput: int.Parse(ConfigurationManager.AppSettings["CollectionThroughput"]),
                             isPartitionedGraph: true);
                         break;
                     case 4:
-                        var collection = await graphDb.GetCollection(
-                            databaseId: ConfigurationManager.AppSettings["DatabaseId"],
-                            collectionId: ConfigurationManager.AppSettings["CollectionId"]);
+                        var collection = await GraphDBHelper.GetCollectionAsync(
+                            documentClient: docClient,
+                            databaseId: databaseId,
+                            collectionId: collectionId);
 
-                        //Console.Write("Sample name: ");
-                        sampleName = "S10000"; //Console.ReadLine();
-
-                        var sw = new Stopwatch();
+                        Console.Write("Sample name: ");
+                        sampleName = Console.ReadLine();
 
                         var brands = DataProvider.ReadBrands(sampleName);
 
+                        var graphImporter = await GraphDBHelper.CreateAndInitGraphImporterAsync(
+                            documentClient: docClient,
+                            databaseId: databaseId,
+                            collection: collection);
+
                         sw.Restart();
-                        await graphDb.AddVertices(
-                            databaseId: ConfigurationManager.AppSettings["DatabaseId"],
-                            collection: collection,
-                            vertices: GraphDatabase.GenerateBrandVertices(brands, ConfigurationManager.AppSettings["PartitionKeyName"]));
-                        Console.WriteLine("brands added"); Console.WriteLine(sw.Elapsed);
+                        await GraphDBHelper.AddVerticesAsync(
+                            graphImporter: graphImporter,
+                            vertices: GraphDBHelper.GenerateBrandVertices(brands, partitionKey));
+                        Console.WriteLine("Brands have been added. " + sw.Elapsed);
 
                         var products = DataProvider.ReadProducts(sampleName);
                         sw.Restart();
-                        await graphDb.AddVertices(
-                            databaseId: ConfigurationManager.AppSettings["DatabaseId"],
-                            collection: collection,
-                            vertices: GraphDatabase.GenerateProductVertices(products, ConfigurationManager.AppSettings["PartitionKeyName"]));
-                        Console.WriteLine("products added"); Console.WriteLine(sw.Elapsed);
+                        await GraphDBHelper.AddVerticesAsync(
+                            graphImporter: graphImporter,
+                            vertices: GraphDBHelper.GenerateProductVertices(products, partitionKey));
+                        Console.WriteLine("Products have been added. " + sw.Elapsed);
 
                         sw.Restart();
-                        await graphDb.AddEdges(
-                            databaseId: ConfigurationManager.AppSettings["DatabaseId"],
-                            collection: collection,
-                            edges: GraphDatabase.GenerateBrandProductEdges(products, ConfigurationManager.AppSettings["PartitionKeyName"]));
+                        await GraphDBHelper.AddEdgesAsync(
+                            graphImporter: graphImporter,
+                            edges: GraphDBHelper.GenerateBrandProductsEdges(products));
 
-                        Console.WriteLine("brand-product added"); Console.WriteLine(sw.Elapsed);
+                        Console.WriteLine("Brand-products have been added. " + sw.Elapsed);
 
                         var people = DataProvider.ReadPeople(sampleName);
                         sw.Restart();
-                        await graphDb.AddVertices(
-                            databaseId: ConfigurationManager.AppSettings["DatabaseId"],
-                            collection: collection,
-                            vertices: GraphDatabase.GeneratePeopleVertices(people, ConfigurationManager.AppSettings["PartitionKeyName"]));
-                        Console.WriteLine("people added"); Console.WriteLine(sw.Elapsed);
+                        await GraphDBHelper.AddVerticesAsync(
+                            graphImporter: graphImporter,
+                            vertices: GraphDBHelper.GeneratePeopleVertices(people, partitionKey));
+                        Console.WriteLine("People have been added. " + sw.Elapsed);
 
                         sw.Restart();
-                        await graphDb.AddEdges(
-                           databaseId: ConfigurationManager.AppSettings["DatabaseId"],
-                           collection: collection,
-                           edges: GraphDatabase.GeneratePersonProductEdges(people, ConfigurationManager.AppSettings["PartitionKeyName"]));
+                        await GraphDBHelper.AddEdgesAsync(
+                            graphImporter: graphImporter,
+                            edges: GraphDBHelper.GeneratePersonProductsEdges(people));
 
-                        Console.WriteLine("person-product added"); Console.WriteLine(sw.Elapsed);
-
-
-
+                        Console.WriteLine("Person-products have been added. " + sw.Elapsed);
                         break;
                     case 7:
-                        await graphDb.DeleteDatabase(
-                            database: graphDb.GetDatabase(ConfigurationManager.AppSettings["DatabaseId"]));
+                        await GraphDBHelper.DeleteDatabaseAsync(
+                            documentClient: docClient,
+                            database: GraphDBHelper.GetDatabase(docClient, databaseId));
                         break;
                     case 8:
-                        await graphDb.DeleteCollection(
-                            databaseId: ConfigurationManager.AppSettings["DatabaseId"],
-                            collectionid: ConfigurationManager.AppSettings["CollectionId"]);
-                        break;
-                    case 9:
-                        //await CleanupAsync(client, collection);
+                        await GraphDBHelper.DeleteCollectionAsync(
+                            documentClient: docClient,
+                            documentCollection: await GraphDBHelper.GetCollectionAsync(docClient, databaseId, collectionId));
                         break;
                     default:
                         Console.WriteLine("Sorry, invalid selection");
