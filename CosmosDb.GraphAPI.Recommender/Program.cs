@@ -1,48 +1,48 @@
-﻿using CosmosDb.GraphAPI.Recommender.Data;
-using CosmosDb.GraphAPI.Recommender.Data.Entites;
-using Microsoft.Azure.Documents;
-using Microsoft.Azure.Documents.Client;
-using Microsoft.Azure.Documents.Linq;
-using Microsoft.Azure.Graphs;
-using Newtonsoft.Json;
+﻿extern alias graphs;
+using CosmosDb.GraphAPI.Recommender.Data;
 using System;
-using System.Collections.Generic;
 using System.Configuration;
+using System.Diagnostics;
 using System.Threading.Tasks;
 
 namespace CosmosDb.GraphAPI.Recommender
 {
     public class Program
     {
-        private static string databaseName = ConfigurationManager.AppSettings["Database.Name"];
-        private static string graphName = ConfigurationManager.AppSettings["Graph.Name"];
-        private static int graphThroughput = int.Parse(ConfigurationManager.AppSettings["Graph.Throughput"]);
-
         public static async Task<int> Main(string[] args)
         {
-            var client = GetClient();
-            var collection = await GetCollection(client);
+            var sw = new Stopwatch();
 
-            int menuchoice = 0;
-            while (menuchoice != 9)
+            var docClient = GraphDBHelper.CreateClient(
+                documentServerEndPoint: ConfigurationManager.AppSettings["DocumentServerEndPoint"],
+                authKey: ConfigurationManager.AppSettings["AuthKey"]);
+
+            var databaseId = ConfigurationManager.AppSettings["DatabaseId"];
+            var collectionId = ConfigurationManager.AppSettings["CollectionId"];
+            var partitionKey = ConfigurationManager.AppSettings["PartitionKeyName"];
+            var partitionsCount = int.Parse(ConfigurationManager.AppSettings["PartitionsCount"]);
+
+            int menuchoice = -1;
+            while (menuchoice != 0)
             {
                 Console.WriteLine("MENU");
                 Console.WriteLine("Please enter the number that you want to do:");
-                Console.WriteLine("1. Create database and graph if not exist");
-                Console.WriteLine("2. Generate and save data");
-                Console.WriteLine("3. Add products, brands, people vertexes");
+                Console.WriteLine("1. Generate and save data");
+                Console.WriteLine("2. Create database");
+                Console.WriteLine("3. Create graph");
+                Console.WriteLine("4. Add products, brands, people vertexes");
 
-                Console.WriteLine("8. Cleanup");
-                Console.WriteLine("9. Exit");
+                Console.WriteLine("7. Delete database");
+                Console.WriteLine("8. Delete graph");
+                Console.WriteLine("0. Exit");
 
                 int.TryParse(Console.ReadLine(), out menuchoice);
 
                 switch (menuchoice)
                 {
-                    case 1:
-                        await CreateDatabaseAndGraphAsync(client);
+                    case 0:
                         break;
-                    case 2:
+                    case 1:
                         Console.Write("Sample name: ");
                         var sampleName = Console.ReadLine();
 
@@ -80,34 +80,80 @@ namespace CosmosDb.GraphAPI.Recommender
                             saveDataToFile: true);
 
                         Console.WriteLine("Generated and saved.");
-
+                        break;
+                    case 2:
+                        await GraphDBHelper.CreateDatabaseAsync(
+                            documentClient: docClient,
+                            databaseId: databaseId);
                         break;
                     case 3:
+                        await GraphDBHelper.CreateCollectionAsync(
+                            documentClient: docClient,
+                            database: GraphDBHelper.GetDatabase(docClient, databaseId),
+                            collectionId: collectionId,
+                            partitionKey: partitionKey,
+                            throughput: int.Parse(ConfigurationManager.AppSettings["CollectionThroughput"]),
+                            isPartitionedGraph: true);
+                        break;
+                    case 4:
+                        var collection = await GraphDBHelper.GetCollectionAsync(
+                            documentClient: docClient,
+                            databaseId: databaseId,
+                            collectionId: collectionId);
+
                         Console.Write("Sample name: ");
                         sampleName = Console.ReadLine();
 
                         var brands = DataProvider.ReadBrands(sampleName);
+
+                        var graphImporter = await GraphDBHelper.CreateAndInitGraphImporterAsync(
+                            documentClient: docClient,
+                            databaseId: databaseId,
+                            collection: collection);
+
+                        sw.Restart();
+                        await GraphDBHelper.AddVerticesAsync(
+                            graphImporter: graphImporter,
+                            vertices: GraphDBHelper.GenerateBrandVertices(brands, partitionKey, partitionsCount));
+                        Console.WriteLine("Brands have been added. " + sw.Elapsed);
+
                         var products = DataProvider.ReadProducts(sampleName);
+                        sw.Restart();
+                        await GraphDBHelper.AddVerticesAsync(
+                            graphImporter: graphImporter,
+                            vertices: GraphDBHelper.GenerateProductVertices(products, partitionKey, partitionsCount));
+                        Console.WriteLine("Products have been added. " + sw.Elapsed);
+
+                        sw.Restart();
+                        await GraphDBHelper.AddEdgesAsync(
+                            graphImporter: graphImporter,
+                            edges: GraphDBHelper.GenerateBrandProductsEdges(products, partitionsCount));
+
+                        Console.WriteLine("Brand-products have been added. " + sw.Elapsed);
+
                         var people = DataProvider.ReadPeople(sampleName);
+                        sw.Restart();
+                        await GraphDBHelper.AddVerticesAsync(
+                            graphImporter: graphImporter,
+                            vertices: GraphDBHelper.GeneratePeopleVertices(people, partitionKey, partitionsCount));
+                        Console.WriteLine("People have been added. " + sw.Elapsed);
 
-                        await AddBrandsAsync(client, collection, brands);
-                        await AddProductsAsync(client, collection, products);
-                        await AddPersonsAsync(client, collection, people);
-                        await AddPersonProductsAsync(client, collection, people);
+                        sw.Restart();
+                        await GraphDBHelper.AddEdgesAsync(
+                            graphImporter: graphImporter,
+                            edges: GraphDBHelper.GeneratePersonProductsEdges(people, partitionsCount));
 
-                        break;
-                    case 4:
-                        break;
-                    case 5:
-                        break;
-                    case 6:
+                        Console.WriteLine("Person-products have been added. " + sw.Elapsed);
                         break;
                     case 7:
+                        await GraphDBHelper.DeleteDatabaseAsync(
+                            documentClient: docClient,
+                            database: GraphDBHelper.GetDatabase(docClient, databaseId));
                         break;
                     case 8:
-                        await CleanupAsync(client, collection);
-                        break;
-                    case 9:
+                        await GraphDBHelper.DeleteCollectionAsync(
+                            documentClient: docClient,
+                            documentCollection: await GraphDBHelper.GetCollectionAsync(docClient, databaseId, collectionId));
                         break;
                     default:
                         Console.WriteLine("Sorry, invalid selection");
@@ -118,116 +164,6 @@ namespace CosmosDb.GraphAPI.Recommender
             }
 
             return 1;
-        }
-
-        private static async Task CreateDatabaseAndGraphAsync(DocumentClient client)
-        {
-            var database = await client.CreateDatabaseIfNotExistsAsync(
-                new Database { Id = databaseName });
-
-            DocumentCollection graph = await client.CreateDocumentCollectionIfNotExistsAsync(
-                UriFactory.CreateDatabaseUri(databaseName),
-                new DocumentCollection { Id = graphName },
-                new RequestOptions { OfferThroughput = graphThroughput });
-        }
-
-        private static async Task AddBrandsAsync(
-            DocumentClient client,
-            DocumentCollection graph,
-            List<Brand> brands)
-        {
-            const string template = "g.addV('brand').property('id', '{0}').property('name', '{1}')";
-
-            foreach (var brand in brands)
-            {
-                var query = string.Format(template, brand.Id, brand.Name);
-
-                await ExecuteQuery(client, graph, query);
-            }
-        }
-
-        private static async Task AddProductsAsync(
-            DocumentClient client,
-            DocumentCollection graph,
-            List<Product> products)
-        {
-            const string template = "g.addV('product').property('id', '{0}').property('name', '{1}').addE('made_by').to(g.V('{2}'))";
-
-            foreach (var product in products)
-            {
-                var query = string.Format(template, product.Id, product.Name, product.BrandId);
-
-                await ExecuteQuery(client, graph, query);
-            }
-        }
-
-        private static async Task AddPersonsAsync(
-            DocumentClient client,
-            DocumentCollection graph,
-            List<Person> people)
-        {
-            const string template = "g.addV('person').property('id', '{0}').property('name', '{1}')";
-
-            foreach (var person in people)
-            {
-                var query = string.Format(template, person.Id, person.Name);
-
-                await ExecuteQuery(client, graph, query);
-            }
-        }
-
-        private static async Task AddPersonProductsAsync(
-            DocumentClient client,
-            DocumentCollection graph,
-            List<Person> people)
-        {
-            const string template = "g.V('{0}').addE('bought').to(g.V('{1}'))";
-
-            foreach (var person in people)
-            {
-                foreach (var productId in person.ProductIds)
-                {
-                    var query = string.Format(template, person.Id, productId);
-
-                    await ExecuteQuery(client, graph, query);
-                }
-            }
-        }
-
-        private static async Task CleanupAsync(DocumentClient client, DocumentCollection graph)
-        {
-            const string query = "g.V().drop()";
-
-            await ExecuteQuery(client, graph, query);
-        }
-
-        private static async Task ExecuteQuery(DocumentClient client, DocumentCollection graph, string query)
-        {
-            IDocumentQuery<dynamic> gremlinQuery = client.CreateGremlinQuery<dynamic>(graph, query);
-            while (gremlinQuery.HasMoreResults)
-            {
-                foreach (dynamic result in await gremlinQuery.ExecuteNextAsync())
-                {
-                    Console.WriteLine($"{JsonConvert.SerializeObject(result)}");
-                }
-            }
-        }
-
-        private static DocumentClient GetClient()
-        {
-            string endpoint = ConfigurationManager.AppSettings["Endpoint"];
-            string authKey = ConfigurationManager.AppSettings["AuthKey"];
-
-            return new DocumentClient(new Uri(endpoint), authKey, new ConnectionPolicy
-            {
-                ConnectionMode = ConnectionMode.Direct,
-                ConnectionProtocol = Protocol.Tcp
-            });
-        }
-
-        private static async Task<DocumentCollection> GetCollection(DocumentClient client)
-        {
-            return await client.ReadDocumentCollectionAsync(UriFactory.CreateDocumentCollectionUri(databaseName, graphName));
         }
     }
 }
