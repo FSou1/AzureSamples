@@ -2,7 +2,7 @@
 
 
 Throughput = 1000
-PartitionsCount = partition for each vertex/edge (PartitionsCount > 19 016 611)
+PartitionsCount = partition for each vertex/edge (PartitionsCount = maxInt)
 
 | Data\Sample                      | S10000           | S100000             | S1000000             |
 |:--------------------------------:|------------------|---------------------|----------------------|
