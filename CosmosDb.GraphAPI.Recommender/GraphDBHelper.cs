@@ -99,18 +99,18 @@ namespace CosmosDb.GraphAPI.Recommender
             return graphBulkImport;
         }
 
-        public static async Task<GraphBulkImportResponse> AddVerticesAsync(GraphBulkImport graphImporter, 
+        public static Task<GraphBulkImportResponse> AddVerticesAsync(GraphBulkImport graphImporter, 
             IEnumerable<Vertex> vertices)
         {
-            return await graphImporter.BulkImportVerticesAsync(
+            return graphImporter.BulkImportVerticesAsync(
                 vertices: vertices,
                 enableUpsert: true);
         }
 
-        public static async Task<GraphBulkImportResponse> AddEdgesAsync(GraphBulkImport graphImporter, 
+        public static Task<GraphBulkImportResponse> AddEdgesAsync(GraphBulkImport graphImporter, 
             IEnumerable<Edge> edges)
         {
-            return await graphImporter.BulkImportEdgesAsync(
+            return graphImporter.BulkImportEdgesAsync(
                 edges: edges,
                 enableUpsert: true);
         }
@@ -118,43 +118,43 @@ namespace CosmosDb.GraphAPI.Recommender
 
         // Genearting
 
-        public static IEnumerable<Vertex> GenerateBrandVertices(List<Brand> brands, string partitionKey)
+        public static IEnumerable<Vertex> GenerateBrandVertices(List<Brand> brands, string partitionKey, int partitionsCount)
         {
             foreach (var brand in brands)
             {
                 var vertex = new Vertex(brand.Id.ToString(), "brand");
-                vertex.AddProperty(new VertexProperty(partitionKey, brand.Id.ToString()));
+                vertex.AddProperty(new VertexProperty(partitionKey, brand.Id % partitionsCount));
                 vertex.AddProperty(new VertexProperty("name", brand.Name));
 
                 yield return vertex;
             }
         }
 
-        public static IEnumerable<Vertex> GenerateProductVertices(List<Product> products, string partitionKey)
+        public static IEnumerable<Vertex> GenerateProductVertices(List<Product> products, string partitionKey, int partitionsCount)
         {
             foreach (var product in products)
             {
                 var vertex = new Vertex(product.Id.ToString(), "product");
-                vertex.AddProperty(new VertexProperty(partitionKey, product.Id.ToString()));
+                vertex.AddProperty(new VertexProperty(partitionKey, product.Id % partitionsCount));
                 vertex.AddProperty(new VertexProperty("name", product.Name));
 
                 yield return vertex;
             }
         }
 
-        public static IEnumerable<Vertex> GeneratePeopleVertices(List<Person> people, string partitionKey)
+        public static IEnumerable<Vertex> GeneratePeopleVertices(List<Person> people, string partitionKey, int partitionsCount)
         {
             foreach (var person in people)
             {
                 var vertex = new Vertex(person.Id.ToString(), "person");
-                vertex.AddProperty(new VertexProperty(partitionKey, person.Id.ToString()));
+                vertex.AddProperty(new VertexProperty(partitionKey, person.Id % partitionsCount));
                 vertex.AddProperty(new VertexProperty("name", person.Name));
 
                 yield return vertex;
             }
         }
 
-        public static IEnumerable<Edge> GenerateBrandProductsEdges(List<Product> products)
+        public static IEnumerable<Edge> GenerateBrandProductsEdges(List<Product> products, int partitionsCount)
         {
             foreach (var product in products)
             {
@@ -168,31 +168,31 @@ namespace CosmosDb.GraphAPI.Recommender
                     outVertexLabel: "brand",
                     inVertexLabel: "product",
 
-                    outVertexPartitionKey: product.BrandId.ToString(),
-                    inVertexPartitionKey: product.Id.ToString());
+                    outVertexPartitionKey: product.BrandId % partitionsCount,
+                    inVertexPartitionKey: product.Id % partitionsCount);
 
                 yield return edge;
             }
         }
 
-        public static IEnumerable<Edge> GeneratePersonProductsEdges(List<Person> people)
+        public static IEnumerable<Edge> GeneratePersonProductsEdges(List<Person> people, int partitionsCount)
         {
             foreach (var person in people)
             {
-                foreach (var product in person.ProductIds)
+                foreach (var productId in person.ProductIds)
                 {
                     var edge = new Edge(
                         edgeId: Guid.NewGuid().ToString(),
                         edgeLabel: "bought",
 
                         outVertexId: person.Id.ToString(),
-                        inVertexId: product.ToString(),
+                        inVertexId: productId.ToString(),
 
                         outVertexLabel: "person",
                         inVertexLabel: "product",
 
-                        outVertexPartitionKey: person.Id.ToString(),
-                        inVertexPartitionKey: product.ToString());
+                        outVertexPartitionKey: person.Id % partitionsCount,
+                        inVertexPartitionKey: productId % partitionsCount);
 
                     yield return edge;
                 }

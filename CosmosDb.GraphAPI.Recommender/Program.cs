@@ -20,6 +20,7 @@ namespace CosmosDb.GraphAPI.Recommender
             var databaseId = ConfigurationManager.AppSettings["DatabaseId"];
             var collectionId = ConfigurationManager.AppSettings["CollectionId"];
             var partitionKey = ConfigurationManager.AppSettings["PartitionKeyName"];
+            var partitionsCount = int.Parse(ConfigurationManager.AppSettings["PartitionsCount"]);
 
             int menuchoice = -1;
             while (menuchoice != 0)
@@ -42,7 +43,6 @@ namespace CosmosDb.GraphAPI.Recommender
                     case 0:
                         break;
                     case 1:
-                        #region Generate data
                         Console.Write("Sample name: ");
                         var sampleName = Console.ReadLine();
 
@@ -80,7 +80,6 @@ namespace CosmosDb.GraphAPI.Recommender
                             saveDataToFile: true);
 
                         Console.WriteLine("Generated and saved.");
-                        #endregion
                         break;
                     case 2:
                         await GraphDBHelper.CreateDatabaseAsync(
@@ -115,20 +114,20 @@ namespace CosmosDb.GraphAPI.Recommender
                         sw.Restart();
                         await GraphDBHelper.AddVerticesAsync(
                             graphImporter: graphImporter,
-                            vertices: GraphDBHelper.GenerateBrandVertices(brands, partitionKey));
+                            vertices: GraphDBHelper.GenerateBrandVertices(brands, partitionKey, partitionsCount));
                         Console.WriteLine("Brands have been added. " + sw.Elapsed);
 
                         var products = DataProvider.ReadProducts(sampleName);
                         sw.Restart();
                         await GraphDBHelper.AddVerticesAsync(
                             graphImporter: graphImporter,
-                            vertices: GraphDBHelper.GenerateProductVertices(products, partitionKey));
+                            vertices: GraphDBHelper.GenerateProductVertices(products, partitionKey, partitionsCount));
                         Console.WriteLine("Products have been added. " + sw.Elapsed);
 
                         sw.Restart();
                         await GraphDBHelper.AddEdgesAsync(
                             graphImporter: graphImporter,
-                            edges: GraphDBHelper.GenerateBrandProductsEdges(products));
+                            edges: GraphDBHelper.GenerateBrandProductsEdges(products, partitionsCount));
 
                         Console.WriteLine("Brand-products have been added. " + sw.Elapsed);
 
@@ -136,13 +135,13 @@ namespace CosmosDb.GraphAPI.Recommender
                         sw.Restart();
                         await GraphDBHelper.AddVerticesAsync(
                             graphImporter: graphImporter,
-                            vertices: GraphDBHelper.GeneratePeopleVertices(people, partitionKey));
+                            vertices: GraphDBHelper.GeneratePeopleVertices(people, partitionKey, partitionsCount));
                         Console.WriteLine("People have been added. " + sw.Elapsed);
 
                         sw.Restart();
                         await GraphDBHelper.AddEdgesAsync(
                             graphImporter: graphImporter,
-                            edges: GraphDBHelper.GeneratePersonProductsEdges(people));
+                            edges: GraphDBHelper.GeneratePersonProductsEdges(people, partitionsCount));
 
                         Console.WriteLine("Person-products have been added. " + sw.Elapsed);
                         break;
