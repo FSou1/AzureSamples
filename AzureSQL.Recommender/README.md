@@ -1,5 +1,3 @@
-# AzureSamples
-
 * [SQL queries (creating tables, and etc.)](https://github.com/ruslanlbondar/AzureSamples/tree/master/AzureSQL.Recommender/Assets/Queries)
 
 *  DB Schema

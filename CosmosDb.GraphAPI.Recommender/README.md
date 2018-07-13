@@ -1,6 +1,3 @@
-# AzureSamples
-
-
 Throughput = 1000
 PartitionsCount = partition for each vertex/edge (PartitionsCount = maxInt)
 
