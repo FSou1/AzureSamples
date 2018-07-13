@@ -1,19 +1,15 @@
 ﻿using Dapper;
 using System;
-using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace AzureSQL.Recommender
 {
     public static class SqlDBHelper
     {
-        private static readonly string _queriesLocation = ConfigurationManager.AppSettings["AssetsPath"];
+        private static readonly string _queriesLocation = ConfigurationManager.AppSettings["QueriesLocation"];
 
         public static void CreateTables(string connectionString)
         {
