@@ -5,7 +5,7 @@ using System.Data;
 using System.Data.SqlClient;
 using System.IO;
 
-namespace AzureSQL.Recommender
+namespace AzureSQL.Recommender.Import
 {
     public static class SqlDBHelper
     {

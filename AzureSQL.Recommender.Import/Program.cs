@@ -2,7 +2,7 @@
 using System.Configuration;
 using System.Threading.Tasks;
 
-namespace AzureSQL.Recommender
+namespace AzureSQL.Recommender.Import
 {
     public class Program
     {
