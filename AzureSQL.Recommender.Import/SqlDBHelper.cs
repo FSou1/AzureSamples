@@ -15,7 +15,6 @@ namespace AzureSQL.Recommender.Import
     {
         private static readonly int _chunkSize = int.Parse(ConfigurationManager.AppSettings["Upload.ChunkSize"]);
         private static readonly int _latencyBetweenRequests = int.Parse(ConfigurationManager.AppSettings["Upload.LatencyBetweenRequests"]);
-
         private static readonly string _queriesLocation = ConfigurationManager.AppSettings["QueriesLocation"];
 
         public static Task CreateTablesAsync(string connectionString)

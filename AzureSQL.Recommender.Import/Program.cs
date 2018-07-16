@@ -72,11 +72,9 @@ namespace AzureSQL.Recommender.Import
                             SqlDBHelper.AddItems(orders, connectionString);
                             Console.WriteLine(" Added (Orders) " + sw.Elapsed);
 
-                        
-
-                            //sw.Restart();
-                            //await SqlDBHelper.EnableClusterIndexAsync(connectionString);
-                            //Console.WriteLine("Clusters index has been enabled. " + sw.Elapsed);
+                            sw.Restart();
+                            await SqlDBHelper.EnableClusterIndexAsync(connectionString);
+                            Console.WriteLine("Clusters index has been enabled. " + sw.Elapsed);
                         }
                         break;
                     default:
