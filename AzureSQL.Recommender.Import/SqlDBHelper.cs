@@ -14,11 +14,6 @@ namespace AzureSQL.Recommender.Import
 {
     public static class SqlDBHelper
     {
-        [ThreadStatic]
-        private static IDbConnection _db;
-
-        static int _connectionCount = 0;
-
         private static readonly string _queriesLocation = ConfigurationManager.AppSettings["QueriesLocation"];
 
         public static Task CreateTablesAsync(string connectionString)
@@ -42,62 +37,28 @@ namespace AzureSQL.Recommender.Import
                 query: File.ReadAllText(Path.Combine(_queriesLocation, "EnableIndexPrimaryAndForeignKeys.sql")));
         }
 
-        public static Task AddBrandsAsync(List<Brand> brands, string connectionString)
+        public static Task AddItemsAsync<T>(List<T> items, string connectionString)
         {
-            var sqlQuery = "INSERT INTO [dbo].[Brands] (Id, Name) VALUES(@Id, @Name)";
+            const string brandsQuery = "INSERT INTO [dbo].[Brands] (Id, Name) VALUES(@Id, @Name)";
+            const string productsQuery = "INSERT INTO [dbo].[Products] (Id, Name, BrandId) VALUES(@Id, @Name, @BrandId)";
+            const string peopleQuery = "INSERT INTO [dbo].[People] (Id, Name) VALUES(@Id, @Name)";
+            const string ordersQuery = "INSERT INTO [dbo].[Orders] (Id, PersonId, ProductId) VALUES(@Id, @PersonId, @ProductId)";
 
             try
             {
-                return AddToDbAsync(brands, sqlQuery, connectionString);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Operation aborted. Reason: " + e.Message);
-                return Task.FromException(e);
-            }
-        }
-
-        public static Task AddProductsAsync(List<Product> products, string connectionString)
-        {
-            var sqlQuery = "INSERT INTO [dbo].[Products] (Id, Name, BrandId) VALUES(@Id, @Name, @BrandId)";
-
-            try
-            {
-                return AddToDbAsync(products, sqlQuery, connectionString);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Operation aborted. Reason: " + e.Message);
-                return Task.FromException(e);
-            }
-        }
-
-        public static Task AddPeopleAsync(List<Person> people, string connectionString)
-        {
-            var sqlQuery = "INSERT INTO [dbo].[People] (" +
-                "               Id, Name" +
-                "           ) VALUES(" +
-                "               @Id, @Name" +
-                "           )";
-
-            try
-            {
-                return AddToDbAsync(people, sqlQuery, connectionString);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Operation aborted. Reason: " + e.Message);
-                return Task.FromException(e);
-            }
-        }
-
-        public static Task AddOrdersAsync(List<Order> orders, string connectionString)
-        {
-            var sqlQuery = "INSERT INTO [dbo].[Orders] (Id, PersonId, ProductId) VALUES(@Id, @PersonId, @ProductId)";
-
-            try
-            {
-                return AddToDbAsync(orders, sqlQuery, connectionString);
+                switch (items)
+                {
+                    case List<Brand> brands:
+                        return AddToDbAsync(brands, brandsQuery, connectionString);
+                    case List<Product> products:
+                        return AddToDbAsync(products, productsQuery, connectionString);
+                    case List<Person> people:
+                        return AddToDbAsync(people, peopleQuery, connectionString);
+                    case List<Order> orders:
+                        return AddToDbAsync(orders, ordersQuery, connectionString);
+                    default:
+                        throw new ArgumentException("Not supported.");
+                }
             }
             catch (Exception e)
             {
@@ -111,7 +72,7 @@ namespace AzureSQL.Recommender.Import
             try
             {
                 List<Task> tasks = new List<Task>();
-                foreach (var item in objects.ByChunk(250))
+                foreach (var item in objects.ByChunks(250))
                 {
                     var task = Task.Run(async () =>
                     {
@@ -144,47 +105,6 @@ namespace AzureSQL.Recommender.Import
             catch (Exception e)
             {
                 Console.WriteLine("Operation aborted. Reason: " + e.Message);
-                //return Task.FromException(e);
-            }
-        }
-    }
-
-    public static class ListExtensions
-    {
-        public static IEnumerable<IList<T>> ByChunk<T>(this IList<T> list, int chunkSize)
-        {
-            if (chunkSize < 1)
-            {
-                throw new ArgumentException("Chunk size can not be less than 1.");
-            }
-
-            int chunksCount = list.Count / chunkSize;
-
-            int lastChunksSize = list.Count % chunkSize;
-            if (lastChunksSize == 0)
-            {
-                lastChunksSize = chunkSize;
-            }
-            else
-            {
-                ++chunksCount;
-            }
-
-            for (int chunkNumber = 0; chunkNumber < chunksCount; ++chunkNumber)
-            {
-                int offset = chunkNumber * chunkSize;
-                int currentChunkSize = chunkSize;
-                if (lastChunksSize > 0 && chunkNumber == chunksCount - 1)
-                {
-                    currentChunkSize = lastChunksSize;
-                }
-
-                var result = new List<T>(currentChunkSize);
-                for (int i = offset; i < offset + currentChunkSize; ++i)
-                {
-                    result.Add(list[i]);
-                }
-                yield return result;
             }
         }
     }

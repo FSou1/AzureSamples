@@ -53,7 +53,7 @@ namespace AzureSQL.Recommender.Import
                             var brands = DataProvider.ReadBrands(sampleName);
                             Console.WriteLine(" Read " + sw.Elapsed);
                             sw.Restart();
-                            await SqlDBHelper.AddBrandsAsync(brands, connectionString);
+                            await SqlDBHelper.AddItemsAsync(brands, connectionString);
                             Console.WriteLine(" Added " + sw.Elapsed);
 
                             sw.Restart();
@@ -61,7 +61,7 @@ namespace AzureSQL.Recommender.Import
                             var products = DataProvider.ReadProducts(sampleName);
                             Console.WriteLine(" Read " + sw.Elapsed);
                             sw.Restart();
-                            await SqlDBHelper.AddProductsAsync(products, connectionString);
+                            await SqlDBHelper.AddItemsAsync(products, connectionString);
                             Console.WriteLine(" Added " + sw.Elapsed);
 
                             sw.Restart();
@@ -70,11 +70,11 @@ namespace AzureSQL.Recommender.Import
                             Console.WriteLine(" Read " + sw.Elapsed);
 
                             sw.Restart();
-                            await SqlDBHelper.AddPeopleAsync(people, connectionString);
+                            await SqlDBHelper.AddItemsAsync(people, connectionString);
                             Console.WriteLine(" Added (People) " + sw.Elapsed);
 
                             sw.Restart();
-                            await SqlDBHelper.AddOrdersAsync(orders, connectionString);
+                            await SqlDBHelper.AddItemsAsync(orders, connectionString);
                             Console.WriteLine(" Added (Orders) " + sw.Elapsed);
 
 
