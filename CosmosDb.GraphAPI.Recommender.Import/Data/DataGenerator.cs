@@ -1,10 +1,10 @@
-﻿using CosmosDb.GraphAPI.Recommender.Data.Entites;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
+using CosmosDb.GraphAPI.Recommender.Import.Data.Entites;
 
-namespace CosmosDb.GraphAPI.Recommender.Data
+namespace CosmosDb.GraphAPI.Recommender.Import.Data
 {
     public class DataGenerator
     {

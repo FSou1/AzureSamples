@@ -1,4 +1,4 @@
-﻿namespace CosmosDb.GraphAPI.Recommender.Data.Entites
+﻿namespace CosmosDb.GraphAPI.Recommender.Import.Data.Entites
 {
     public class Person
     {

@@ -7,8 +7,8 @@
     <ProjectGuid>{F40BD56A-AEFC-44AD-A52E-8609DA4C60A8}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>CosmosDb.GraphAPI.Recommender</RootNamespace>
-    <AssemblyName>CosmosDb.GraphAPI.Recommender</AssemblyName>
+    <RootNamespace>CosmosDb.GraphAPI.Recommender.Import</RootNamespace>
+    <AssemblyName>CosmosDb.GraphAPI.Recommender.Import</AssemblyName>
     <TargetFrameworkVersion>v4.7.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>

@@ -332,3 +332,5 @@ ASALocalRun/
 # MFractors (Xamarin productivity tool) working folder 
 .mfractor/
 CosmosDb.GraphAPI.Recommender/App.Release.config
+CosmosDb.GraphAPI.Recommender.Benchmarks/app.Release.config
+CosmosDb.GraphAPI.Recommender.Import/App.Release.config

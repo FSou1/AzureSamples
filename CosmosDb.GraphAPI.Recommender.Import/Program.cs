@@ -1,11 +1,11 @@
 ﻿extern alias graphs;
-using CosmosDb.GraphAPI.Recommender.Data;
 using System;
 using System.Configuration;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using CosmosDb.GraphAPI.Recommender.Import.Data;
 
-namespace CosmosDb.GraphAPI.Recommender
+namespace CosmosDb.GraphAPI.Recommender.Import
 {
     public class Program
     {
