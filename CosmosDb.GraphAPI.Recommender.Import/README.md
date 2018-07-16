@@ -10,17 +10,23 @@ PartitionsCount = partition for each vertex/edge (PartitionsCount = maxInt)
 | Bought [edges count ; time]      | 190 686 ; 970 s  | 1 902 075 ; 2.6 h?  | 19 016 611 ; 26.8 h? |
 
 
-Throughput = 10000
-PartitionsCount = 1
+## Throughput = 10 000, partition 1
 
-| Data\Sample                      | S10000          | S100000             | S1000000              |
-|:--------------------------------:|-----------------|---------------------|-----------------------|
-| Brands [vertices count ; time]   | 5 ; 3.0 s       | 10 ; 6.00 s?        | 200 ; 120 s?          |
-| Products [vertices count ; time] | 500 ; 3.0 s     | 2000 ; 12.00 s?     | 4000 ; 24.00 s?       |
-| MadeBy [edges count ; time]      | 500 ; 6.0 s     | 2000 ; 24.00 s?     | 4000 ; 48.00 s?       |
-| People [vertices count ; time]   | 10 000 ; 27.3 s | 100 000 ; 4.55 min? | 1 000 000 ; 45.5 min? |
-| Bought [edges count ; time]      | 190 686 ; 9 min | 1 902 075 ; 90 min? | 19 016 611 ; 15 h?    |
+| Entity  | Type   | S10000                 | S100000                  |
+|---------|--------|------------------------|--------------------------|
+| Brand   | Vertex | 3.0 s (5 items)        | 3.0 s (5 items)          |
+| Product | Vertex | 3.0 s (500 items)      | 3.0 s (500 items)        |
+| MadeBy  | Edge   | 3.0 s (500 items)      | 3.0 s (500 items)        |
+| Person  | Vertex | 21.0 s (10 000 items)  | 4m 3 s (100 000 items)   |
+| Bought  | Edge   | 1m 24 s (34 835 items) | 14m 48 s (350 037 items) |
 
+### S10000
+* Data size: 36,63 MB
+* Index size: 1,83 MB
+
+### S100000
+* Data size: 350 MB
+* Index size: 10,9 MB
 
 Throughput = 10000
 PartitionsCount = partition for each vertex/edge (PartitionsCount = maxInt)

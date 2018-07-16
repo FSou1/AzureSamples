@@ -6,6 +6,7 @@ using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.Documents.Linq;
 using Microsoft.Azure.Graphs;
+using Microsoft.Azure.Graphs.Elements;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace CosmosDb.GraphAPI.Recommender.Benchmarks
@@ -29,9 +30,12 @@ namespace CosmosDb.GraphAPI.Recommender.Benchmarks
         }
 
         [DataTestMethod]
-        [DataRow(1008551, 153)] // 1 product
-        [DataRow(1002784, 300)] // 3 products
-        [DataRow(1008556, 410)] // 6 products
+        //[DataRow(1008551, 153)] // 1 product S10_000
+        //[DataRow(1002784, 300)] // 3 products S10_000
+        //[DataRow(1008556, 410)] // 6 products S10_000
+        [DataRow(1000018, 480)] // 1 product S100_000
+        [DataRow(1000060, 497)] // 3 products S100_000
+        [DataRow(1000078, 496)] // 6 products S100_000
         public async Task TestRecommendationsBasedOnCommonAndDifferentBoughtProducts(
             int personId, int recommendationsCount
         )
@@ -52,9 +56,12 @@ namespace CosmosDb.GraphAPI.Recommender.Benchmarks
         }
 
         [DataTestMethod]
-        [DataRow(1000856, 213)] // 1 product
-        [DataRow(1000870, 530)] // 3 products
-        [DataRow(1000874, 693)] // 6 products
+        //[DataRow(1000856, 213)] // 1 product S10_000
+        //[DataRow(1000870, 530)] // 3 products S10_000
+        //[DataRow(1000874, 693)] // 6 products S10_000
+        [DataRow(1000130, 1765)] // 1 product S100_000
+        [DataRow(1000162, 4026)] // 3 products S100_000
+        [DataRow(1000181, 11255)] // 6 products S100_000
         public async Task TestRecommendationsBasedOnCommonAndDifferentBoughtProductsWithoutDedup(
             int personId, int recommendationsCount
         )
@@ -74,9 +81,12 @@ namespace CosmosDb.GraphAPI.Recommender.Benchmarks
         }
 
         [DataTestMethod]
-        [DataRow(1001048, 7)] // 1 product
-        [DataRow(1001060, 8)] // 3 products
-        [DataRow(1001094, 35)] // 6 products
+        //[DataRow(1001048, 7)] // 1 product S10_000
+        //[DataRow(1001060, 8)] // 3 products S10_000
+        //[DataRow(1001094, 35)] // 6 products S10_000
+        [DataRow(1000209, 23)] // 1 product S10_0000
+        [DataRow(1000283, 70)] // 3 products S10_0000
+        [DataRow(1000393, 154)] // 6 products S10_0000
         public async Task TestRecommendationsBasedOnCommonAndDifferentBoughtProductsGreaterThanTwo(
             int personId, int recommendationsCount
         )
@@ -120,6 +130,27 @@ namespace CosmosDb.GraphAPI.Recommender.Benchmarks
             );
 
             Assert.AreEqual(recommendationsCount, data.Count);
+        }
+
+        [TestMethod]
+        public async Task TestTopTenPopularProducts()
+        {
+            string query = @"
+                g.V().has('label', 'product')
+                    .group().by(__.in('bought').count()).unfold()
+                    .order().by(keys, decr)
+                    .limit(10)
+                        .select(values).unfold()
+                        .limit(10)
+            ";
+
+            var data = await ExecuteQueryAsync<dynamic>(client, collection,
+                string.Format(query)
+            );
+            
+            Assert.AreEqual(10, data.Count);
+            Assert.AreEqual(50125, data[0].Id);
+            Assert.AreEqual(50322, data[9].Id);
         }
 
         private static async Task<IList<T>> ExecuteQueryAsync<T>(DocumentClient client, DocumentCollection graph, string query)
