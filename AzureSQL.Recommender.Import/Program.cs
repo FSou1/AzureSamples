@@ -36,46 +36,42 @@ namespace AzureSQL.Recommender.Import
                         await SqlDBHelper.DropTablesAsync(connectionString);
                         break;
                     case 3:
-                        {
-                            
+                        var sampleName = "S10000";
 
+                        sw.Restart();
+                        Console.WriteLine("Brands");
 
-                            var sampleName = "S10000";
+                        var brands = DataProvider.ReadBrands(sampleName);
+                        Console.WriteLine(" Read " + sw.Elapsed);
+                        sw.Restart();
+                        SqlDBHelper.AddItems(brands, connectionString);
+                        Console.WriteLine(" Added " + sw.Elapsed);
 
-                            sw.Restart();
-                            Console.WriteLine("Brands");
+                        sw.Restart();
+                        Console.WriteLine("Products");
+                        var products = DataProvider.ReadProducts(sampleName);
+                        Console.WriteLine(" Read " + sw.Elapsed);
+                        sw.Restart();
+                        SqlDBHelper.AddItems(products, connectionString);
+                        Console.WriteLine(" Added " + sw.Elapsed);
 
-                            var brands = DataProvider.ReadBrands(sampleName);
-                            Console.WriteLine(" Read " + sw.Elapsed);
-                            sw.Restart();
-                            SqlDBHelper.AddItems(brands, connectionString);
-                            Console.WriteLine(" Added " + sw.Elapsed);
+                        sw.Restart();
+                        Console.WriteLine("People and orders");
+                        var (people, orders) = DataProvider.ReadPeopleAndOrders(sampleName);
+                        Console.WriteLine(" Read " + sw.Elapsed);
 
-                            sw.Restart();
-                            Console.WriteLine("Products");
-                            var products = DataProvider.ReadProducts(sampleName);
-                            Console.WriteLine(" Read " + sw.Elapsed);
-                            sw.Restart();
-                            SqlDBHelper.AddItems(products, connectionString);
-                            Console.WriteLine(" Added " + sw.Elapsed);
+                        sw.Restart();
+                        SqlDBHelper.AddItems(people, connectionString);
+                        Console.WriteLine(" Added (People) " + sw.Elapsed);
 
-                            sw.Restart();
-                            Console.WriteLine("People and orders");
-                            var (people, orders) = DataProvider.ReadPeopleAndOrders(sampleName);
-                            Console.WriteLine(" Read " + sw.Elapsed);
+                        sw.Restart();
+                        SqlDBHelper.AddItems(orders, connectionString);
+                        Console.WriteLine(" Added (Orders) " + sw.Elapsed);
 
-                            sw.Restart();
-                            SqlDBHelper.AddItems(people, connectionString);
-                            Console.WriteLine(" Added (People) " + sw.Elapsed);
+                        sw.Restart();
+                        await SqlDBHelper.EnableClusterIndexAsync(connectionString);
+                        Console.WriteLine("Clusters index has been enabled. " + sw.Elapsed);
 
-                            sw.Restart();
-                            SqlDBHelper.AddItems(orders, connectionString);
-                            Console.WriteLine(" Added (Orders) " + sw.Elapsed);
-
-                            sw.Restart();
-                            await SqlDBHelper.EnableClusterIndexAsync(connectionString);
-                            Console.WriteLine("Clusters index has been enabled. " + sw.Elapsed);
-                        }
                         break;
                     default:
                         Console.WriteLine("Sorry, invalid selection");
