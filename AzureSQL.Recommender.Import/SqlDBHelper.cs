@@ -3,10 +3,9 @@ using Dapper;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
-using System.Data;
 using System.Data.SqlClient;
+using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,6 +13,9 @@ namespace AzureSQL.Recommender.Import
 {
     public static class SqlDBHelper
     {
+        private static readonly int _chunkSize = int.Parse(ConfigurationManager.AppSettings["Upload.ChunkSize"]);
+        private static readonly int _latencyBetweenRequests = int.Parse(ConfigurationManager.AppSettings["Upload.LatencyBetweenRequests"]);
+
         private static readonly string _queriesLocation = ConfigurationManager.AppSettings["QueriesLocation"];
 
         public static Task CreateTablesAsync(string connectionString)
@@ -37,7 +39,7 @@ namespace AzureSQL.Recommender.Import
                 query: File.ReadAllText(Path.Combine(_queriesLocation, "EnableIndexPrimaryAndForeignKeys.sql")));
         }
 
-        public static Task AddItemsAsync<T>(List<T> items, string connectionString)
+        public static void AddItems<T>(List<T> items, string connectionString)
         {
             const string brandsQuery = "INSERT INTO [dbo].[Brands] (Id, Name) VALUES(@Id, @Name)";
             const string productsQuery = "INSERT INTO [dbo].[Products] (Id, Name, BrandId) VALUES(@Id, @Name, @BrandId)";
@@ -49,13 +51,17 @@ namespace AzureSQL.Recommender.Import
                 switch (items)
                 {
                     case List<Brand> brands:
-                        return AddToDbAsync(brands, brandsQuery, connectionString);
+                        AddToDb(brands, brandsQuery, connectionString);
+                        break;
                     case List<Product> products:
-                        return AddToDbAsync(products, productsQuery, connectionString);
+                        AddToDb(products, productsQuery, connectionString);
+                        break;
                     case List<Person> people:
-                        return AddToDbAsync(people, peopleQuery, connectionString);
+                        AddToDb(people, peopleQuery, connectionString);
+                        break;
                     case List<Order> orders:
-                        return AddToDbAsync(orders, ordersQuery, connectionString);
+                        AddToDb(orders, ordersQuery, connectionString);
+                        break;
                     default:
                         throw new ArgumentException("Not supported.");
                 }
@@ -63,43 +69,51 @@ namespace AzureSQL.Recommender.Import
             catch (Exception e)
             {
                 Console.WriteLine("Operation aborted. Reason: " + e.Message);
-                return Task.FromException(e);
             }
         }
 
-        private static async Task AddToDbAsync<T>(IList<T> objects, string sqlQuery, string connectionString)
+        private static void AddToDb<T>(IList<T> objects, string sqlQuery, string connectionString)
         {
             try
             {
-                List<Task> tasks = new List<Task>();
-                foreach (var item in objects.ByChunks(250))
+                var sw = new Stopwatch();
+                var tasks = new List<Task>(_chunkSize);
+                foreach (var chunk in objects.ByChunks(_chunkSize))
                 {
-                    var task = Task.Run(async () =>
+                    sw.Restart();
+                    foreach (var item in chunk)
                     {
-                        using (var db = new SqlConnection(connectionString))
+                        var task = Task.Run(async () =>
                         {
-                            await db.ExecuteAsync(sqlQuery, item);
-                        }
-                    });
-                    tasks.Add(task);
-                }
+                            await ExecuteQueryAsync(connectionString, sqlQuery, item);
+                        });
+                        tasks.Add(task);
+                    }
+                    Task.WaitAll(tasks.ToArray());
+                    tasks.Clear();
 
-                await Task.WhenAll(tasks);
+                    int waitingTime = _latencyBetweenRequests - (int)sw.ElapsedMilliseconds;
+                    if (waitingTime < 0)
+                    {
+                        waitingTime = 0;
+                    }
+
+                    Thread.Sleep(waitingTime);
+                }
             }
             catch (Exception e)
             {
                 Console.WriteLine("Operation aborted. Reason: " + e.Message);
-                //return Task.FromException(e);
             }
         }
 
-        private static async Task ExecuteQueryAsync(string connectionString, string query)
+        private static async Task ExecuteQueryAsync(string connectionString, string query, object param = null)
         {
             try
             {
                 using (var db = new SqlConnection(connectionString))
                 {
-                    await db.ExecuteAsync(query);
+                    await db.ExecuteAsync(query, param);
                 }
             }
             catch (Exception e)

@@ -1,15 +1,7 @@
 ﻿using AzureSQL.Recommender.Import.Data;
-using AzureSQL.Recommender.Import.Data.Entities;
-using Dapper;
 using System;
-using System.Collections.Generic;
 using System.Configuration;
-using System.Data;
-using System.Data.SqlClient;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace AzureSQL.Recommender.Import
@@ -45,6 +37,9 @@ namespace AzureSQL.Recommender.Import
                         break;
                     case 3:
                         {
+                            
+
+
                             var sampleName = "S10000";
 
                             sw.Restart();
@@ -53,7 +48,7 @@ namespace AzureSQL.Recommender.Import
                             var brands = DataProvider.ReadBrands(sampleName);
                             Console.WriteLine(" Read " + sw.Elapsed);
                             sw.Restart();
-                            await SqlDBHelper.AddItemsAsync(brands, connectionString);
+                            SqlDBHelper.AddItems(brands, connectionString);
                             Console.WriteLine(" Added " + sw.Elapsed);
 
                             sw.Restart();
@@ -61,7 +56,7 @@ namespace AzureSQL.Recommender.Import
                             var products = DataProvider.ReadProducts(sampleName);
                             Console.WriteLine(" Read " + sw.Elapsed);
                             sw.Restart();
-                            await SqlDBHelper.AddItemsAsync(products, connectionString);
+                            SqlDBHelper.AddItems(products, connectionString);
                             Console.WriteLine(" Added " + sw.Elapsed);
 
                             sw.Restart();
@@ -70,13 +65,14 @@ namespace AzureSQL.Recommender.Import
                             Console.WriteLine(" Read " + sw.Elapsed);
 
                             sw.Restart();
-                            await SqlDBHelper.AddItemsAsync(people, connectionString);
+                            SqlDBHelper.AddItems(people, connectionString);
                             Console.WriteLine(" Added (People) " + sw.Elapsed);
 
                             sw.Restart();
-                            await SqlDBHelper.AddItemsAsync(orders, connectionString);
+                            SqlDBHelper.AddItems(orders, connectionString);
                             Console.WriteLine(" Added (Orders) " + sw.Elapsed);
 
+                        
 
                             //sw.Restart();
                             //await SqlDBHelper.EnableClusterIndexAsync(connectionString);
