@@ -52,7 +52,7 @@ namespace AzureSQL.Recommender.Import
                             Console.WriteLine(" Added " + sw.Elapsed);
 
                             sw.Restart();
-                            Console.WriteLine("Product");
+                            Console.WriteLine("Products");
                             var products = DataProvider.ReadProducts(sampleName);
                             Console.WriteLine(" Read " + sw.Elapsed);
                             sw.Restart();
