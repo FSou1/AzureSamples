@@ -1,30 +1,14 @@
 ﻿using AzureSQL.Recommender.Import.Data.Entities;
-using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace AzureSQL.Recommender.Import.Data
 {
-    public class Pair<T1, T2>
-    {
-        public Pair(T1 t1, T2 t2)
-        {
-            value1 = t1;
-            value2 = t2;
-        }
-
-        public T1 value1;
-        public T2 value2;
-    }
-
     public static class DataProvider
     {
         private static readonly string _generatedDataLocation =
-            ConfigurationManager.AppSettings["DataGenerator.GeneratedData"];
+            ConfigurationManager.AppSettings["DataForImport"];
 
         public static List<Brand> ReadBrands(string sampleName)
         {
