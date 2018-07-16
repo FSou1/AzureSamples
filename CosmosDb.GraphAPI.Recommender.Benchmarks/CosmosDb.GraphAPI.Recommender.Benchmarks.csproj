@@ -245,6 +245,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="app.Release.config" />
     <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>
