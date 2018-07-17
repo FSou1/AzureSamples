@@ -1,0 +1,22 @@
+CREATE TABLE Brands
+(
+    Id INT NOT NULL,
+    Name NVARCHAR(100) NOT NULL
+);
+CREATE TABLE Products
+(
+    Id INT NOT NULL,
+	Name NVARCHAR(100) NOT NULL,
+	BrandId INT NOT NULL
+);
+CREATE TABLE People
+(
+    Id INT NOT NULL,
+	Name NVARCHAR(100) NOT NULL
+);
+CREATE TABLE Orders
+(
+    Id INT NOT NULL,
+	PersonId INT NOT NULL,
+	ProductId INT NOT NULL
+);
