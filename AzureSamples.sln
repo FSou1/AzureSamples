@@ -9,7 +9,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CosmosDb.Table", "CosmosDb.
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AzureSQL", "AzureSQL", "{318A8686-EEA1-4564-8B99-80692F87E46F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureSQL.Recommender", "AzureSQL.Recommender\AzureSQL.Recommender.csproj", "{28B4C089-67B0-4A99-B4EE-F514E08FDC66}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureSQL.Recommender.Import", "AzureSQL.Recommender.Import\AzureSQL.Recommender.Import.csproj", "{28B4C089-67B0-4A99-B4EE-F514E08FDC66}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CosmosDb.GraphAPI.Recommender.Import", "CosmosDb.GraphAPI.Recommender.Import\CosmosDb.GraphAPI.Recommender.Import.csproj", "{F40BD56A-AEFC-44AD-A52E-8609DA4C60A8}"
 EndProject
