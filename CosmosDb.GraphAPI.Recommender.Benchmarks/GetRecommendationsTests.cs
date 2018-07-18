@@ -30,12 +30,12 @@ namespace CosmosDb.GraphAPI.Recommender.Benchmarks
         }
 
         [DataTestMethod]
-        [DataRow(1008551, 153)] // 1 product S10_000
-        [DataRow(1002784, 300)] // 3 products S10_000
-        [DataRow(1008556, 410)] // 6 products S10_000
-        //[DataRow(1000018, 480)] // 1 product S100_000
-        //[DataRow(1000060, 497)] // 3 products S100_000
-        //[DataRow(1000078, 496)] // 6 products S100_000
+        //[DataRow(1008551, 153)] // 1 product S10_000
+        //[DataRow(1002784, 300)] // 3 products S10_000
+        //[DataRow(1008556, 410)] // 6 products S10_000
+        [DataRow(1000018, 480)] // 1 product S100_000
+        [DataRow(1000060, 497)] // 3 products S100_000
+        [DataRow(1000078, 496)] // 6 products S100_000
         public async Task TestRecommendationsBasedOnCommonAndDifferentBoughtProducts(
             int personId, int recommendationsCount
         )
@@ -56,12 +56,12 @@ namespace CosmosDb.GraphAPI.Recommender.Benchmarks
         }
 
         [DataTestMethod]
-        [DataRow(1000856, 213)] // 1 product S10_000
-        [DataRow(1000870, 530)] // 3 products S10_000
-        [DataRow(1000874, 693)] // 6 products S10_000
-        //[DataRow(1000130, 1765)] // 1 product S100_000
-        //[DataRow(1000162, 4026)] // 3 products S100_000
-        //[DataRow(1000181, 11255)] // 6 products S100_000
+        //[DataRow(1000856, 213)] // 1 product S10_000
+        //[DataRow(1000870, 530)] // 3 products S10_000
+        //[DataRow(1000874, 693)] // 6 products S10_000
+        [DataRow(1000130, 1765)] // 1 product S100_000
+        [DataRow(1000162, 4026)] // 3 products S100_000
+        [DataRow(1000181, 11255)] // 6 products S100_000
         public async Task TestRecommendationsBasedOnCommonAndDifferentBoughtProductsWithoutDedup(
             int personId, int recommendationsCount
         )
@@ -81,12 +81,12 @@ namespace CosmosDb.GraphAPI.Recommender.Benchmarks
         }
 
         [DataTestMethod]
-        [DataRow(1001048, 7)] // 1 product S10_000
-        [DataRow(1001060, 8)] // 3 products S10_000
-        [DataRow(1001094, 35)] // 6 products S10_000
-        //[DataRow(1000209, 23)] // 1 product S10_0000
-        //[DataRow(1000283, 70)] // 3 products S10_0000
-        //[DataRow(1000393, 154)] // 6 products S10_0000
+        //[DataRow(1001048, 7)] // 1 product S10_000
+        //[DataRow(1001060, 8)] // 3 products S10_000
+        //[DataRow(1001094, 35)] // 6 products S10_000
+        [DataRow(1000209, 23)] // 1 product S100_0000
+        [DataRow(1000283, 70)] // 3 products S100_0000
+        [DataRow(1000393, 154)] // 6 products S100_0000
         public async Task TestRecommendationsBasedOnCommonAndDifferentBoughtProductsGreaterThanTwo(
             int personId, int recommendationsCount
         )
