@@ -56,7 +56,7 @@ namespace CosmosDb.GraphAPI.Recommender.Import
                             isPartitionedGraph: true);
                         break;
                     case 3:
-                         var generatedDataLocation = ConfigurationManager.AppSettings["DataLocationForImport"];
+                         var generatedDataLocation = ConfigurationManager.AppSettings["DataGenerator.GeneratedData"];
 
                          var collection = await GraphDBHelper.GetCollectionAsync(
                             documentClient: docClient,
