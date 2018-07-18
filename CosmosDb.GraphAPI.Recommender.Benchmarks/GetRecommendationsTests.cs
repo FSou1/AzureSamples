@@ -14,10 +14,10 @@ namespace CosmosDb.GraphAPI.Recommender.Benchmarks
     [TestClass]
     public class GetRecommendationsTests
     {
-        private static string databaseName = ConfigurationManager.AppSettings["DatabaseId"];
-        private static string graphName = ConfigurationManager.AppSettings["CollectionId"];
-        private static string endpoint = ConfigurationManager.AppSettings["DocumentServerEndPoint"];
-        private static string authKey = ConfigurationManager.AppSettings["AuthKey"];
+        private static readonly string _databaseName = ConfigurationManager.AppSettings["DatabaseId"];
+        private static readonly string _graphName = ConfigurationManager.AppSettings["CollectionId"];
+        private static readonly string _endpoint = ConfigurationManager.AppSettings["DocumentServerEndPoint"];
+        private static readonly string _authKey = ConfigurationManager.AppSettings["AuthKey"];
 
         private DocumentClient client;
         private DocumentCollection collection;
@@ -169,7 +169,7 @@ namespace CosmosDb.GraphAPI.Recommender.Benchmarks
 
         private static DocumentClient GetClient()
         {
-            return new DocumentClient(new Uri(endpoint), authKey, new ConnectionPolicy
+            return new DocumentClient(new Uri(_endpoint), _authKey, new ConnectionPolicy
             {
                 ConnectionMode = ConnectionMode.Direct,
                 ConnectionProtocol = Protocol.Tcp
@@ -179,12 +179,12 @@ namespace CosmosDb.GraphAPI.Recommender.Benchmarks
         private static async Task<DocumentCollection> GetCollection(DocumentClient client)
         {
             return await client.ReadDocumentCollectionAsync(
-                UriFactory.CreateDocumentCollectionUri(databaseName, graphName));
+                UriFactory.CreateDocumentCollectionUri(_databaseName, _graphName));
         }
     }
 
     public class Product
     {
-        public string Id { get; set; }
+        public int Id { get; set; }
     }
 }

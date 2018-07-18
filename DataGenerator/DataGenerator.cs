@@ -1,46 +1,24 @@
-﻿using System;
+﻿using DataGenerator.Entites;
+using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.IO;
-using CosmosDb.GraphAPI.Recommender.Import.Data.Entites;
 
-namespace CosmosDb.GraphAPI.Recommender.Import.Data
+namespace DataGenerator
 {
     public class DataGenerator
     {
-        public class DataOffsetOptions
-        {
-            public DataOffsetOptions(int brandOffset, int productOffset, int personOffset)
-            {
-                this.Brand = brandOffset;
-                this.Product = productOffset;
-                this.Person = personOffset;
-            }
-
-            public int Brand { get; private set; }
-            public int Product { get; private set; }
-            public int Person { get; private set; }
-        }
-
-        private static readonly Random _random = new Random();
-        private List<(string brand, List<string> product)> _brandsProducts;
+        private readonly DataOffsetOptions _offsetOptions;
+        private readonly string _stockDataLocation;
+        private Random _random;
+        private List<(string brand, List<string> products)> _brandsProducts;
         private string[] _names;
 
-
-        public DataGenerator(DataOffsetOptions dataOffsetOptions)
+        public DataGenerator(DataOffsetOptions dataOffsetOptions, string stockDataLocation)
         {
-            this.OffsetOptions = dataOffsetOptions;
-            this.StockDataLocation = ConfigurationManager.AppSettings["DataGenerator.StockData"];
-            this.GeneratedDataLocation = ConfigurationManager.AppSettings["DataGenerator.GeneratedData"];
+            this._offsetOptions = dataOffsetOptions;
+            this._stockDataLocation = stockDataLocation;
+            this._random = new Random();
         }
-
-
-        public DataOffsetOptions OffsetOptions { get; private set; }
-
-        public string StockDataLocation { get; set; }
-
-        public string GeneratedDataLocation { get; set; }
-
 
         public (List<Brand> brands, List<Product> products, List<Person> people) GenerateData(
             string sampleName,
@@ -49,8 +27,7 @@ namespace CosmosDb.GraphAPI.Recommender.Import.Data
             int peopleCount,
             int minProductsCount,
             int maxProductsCount,
-            double peoplePercentHaveCommonProducts = 0.8,
-            bool saveDataToFile = false)
+            double peoplePercentHaveCommonProducts = 0.8)
         {
             if (_brandsProducts == null)
             {
@@ -59,6 +36,10 @@ namespace CosmosDb.GraphAPI.Recommender.Import.Data
             if (_names == null)
             {
                 ReadStockNamesData();
+            }
+            if (minProductsCount == 0)
+            {
+                throw new ArgumentException("minProductsCount must be greater than 0. (Bug)");
             }
 
             var (brands, products) = GenerateBrandsProductsSampleList(brandsCount, maxProductCount);
@@ -70,19 +51,12 @@ namespace CosmosDb.GraphAPI.Recommender.Import.Data
                 peoplePercentHaveCommonProducts: peoplePercentHaveCommonProducts
                 );
 
-            if (saveDataToFile)
-            {
-                SaveBrands(brands, sampleName);
-                SaveProducts(products, sampleName);
-                SavePeople(people, sampleName);
-            }
-
             return (brands, products, people);
         }
 
-        public void SaveBrands(List<Brand> brands, string sampleName)
+        public static void SaveBrands(string generatedDataLocation, List<Brand> brands, string sampleName)
         {
-            var path = Path.Combine(GeneratedDataLocation, $"{sampleName}-brands.csv");
+            var path = Path.Combine(generatedDataLocation, $"{sampleName}-brands.csv");
             using (var sw = new StreamWriter(path))
             {
                 foreach (var brand in brands)
@@ -92,9 +66,9 @@ namespace CosmosDb.GraphAPI.Recommender.Import.Data
             }
         }
 
-        public void SaveProducts(List<Product> products, string sampleName)
+        public static void SaveProducts(string generatedDataLocation, List<Product> products, string sampleName)
         {
-            var path = Path.Combine(GeneratedDataLocation, $"{sampleName}-products.csv");
+            var path = Path.Combine(generatedDataLocation, $"{sampleName}-products.csv");
             using (var sw = new StreamWriter(path))
             {
                 foreach (var product in products)
@@ -104,9 +78,9 @@ namespace CosmosDb.GraphAPI.Recommender.Import.Data
             }
         }
 
-        public void SavePeople(List<Person> people, string sampleName)
+        public static void SavePeople(string generatedDataLocation, List<Person> people, string sampleName)
         {
-            var path = Path.Combine(GeneratedDataLocation, $"{sampleName}-people.csv");
+            var path = Path.Combine(generatedDataLocation, $"{sampleName}-people.csv");
             using (var sw = new StreamWriter(path))
             {
                 foreach (var person in people)
@@ -120,7 +94,7 @@ namespace CosmosDb.GraphAPI.Recommender.Import.Data
         {
             _brandsProducts = new List<(string brand, List<string> products)>();
 
-            var path = Path.Combine(StockDataLocation, "Brands-Products");
+            var path = Path.Combine(_stockDataLocation, "Brands-Products");
             foreach (var file in Directory.EnumerateFiles(path))
             {
                 using (var sr = new StreamReader(file))
@@ -140,7 +114,7 @@ namespace CosmosDb.GraphAPI.Recommender.Import.Data
 
         private void ReadStockNamesData()
         {
-            _names = File.ReadAllLines(Path.Combine(StockDataLocation, "Names.txt"));
+            _names = File.ReadAllLines(Path.Combine(_stockDataLocation, "Names.txt"));
         }
 
         private (List<Brand> brands, List<Product> products) GenerateBrandsProductsSampleList(
@@ -163,44 +137,52 @@ namespace CosmosDb.GraphAPI.Recommender.Import.Data
 
             var brands = new List<Brand>(brandsCount);
 
-            int brandId = OffsetOptions.Brand;
+            int brandId = _offsetOptions.Brand;
             for (int i = 0; i < brandsCount; ++i)
             {
-                brands.Add(new Brand(brandId, _brandsProducts[i].brand));
+                brands.Add(new Brand()
+                {
+                    Id = brandId,
+                    Name = _brandsProducts[i].brand
+                });
                 ++brandId;
             }
 
             var products = new List<Product>(maxProductCount);
 
-            int productId = OffsetOptions.Product;
+            int productId = _offsetOptions.Product;
             int avarageModelCountPerBrand = maxProductCount / brandsCount;
             int productsNeed = 0;
 
             int j = brandsCount - 1;
             while (j >= 0)
             {
-                if (_brandsProducts[j].product.Count < avarageModelCountPerBrand)
+                if (_brandsProducts[j].products.Count < avarageModelCountPerBrand)
                 {
-                    productsNeed += avarageModelCountPerBrand - _brandsProducts[j].product.Count;
+                    productsNeed += avarageModelCountPerBrand - _brandsProducts[j].products.Count;
                 }
 
                 int i = 0;
-                while (i < _brandsProducts[j].product.Count && i < avarageModelCountPerBrand)
+                while (i < _brandsProducts[j].products.Count && i < avarageModelCountPerBrand)
                 {
-                    products.Add(new Product(
-                        id: productId,
-                        name: _brandsProducts[j].product[i],
-                        brandId: OffsetOptions.Brand + j));
+                    products.Add(new Product()
+                    {
+                        Id = productId,
+                        Name = _brandsProducts[j].products[i],
+                        BrandId = _offsetOptions.Brand + j
+                    });
                     ++productId;
                     ++i;
                 }
 
-                while (i < _brandsProducts[j].product.Count && productsNeed > 0)
+                while (i < _brandsProducts[j].products.Count && productsNeed > 0)
                 {
-                    products.Add(new Product(
-                        id: productId,
-                        name: _brandsProducts[j].product[i],
-                        brandId: OffsetOptions.Brand + j));
+                    products.Add(new Product()
+                    {
+                        Id = productId,
+                        Name = _brandsProducts[j].products[i],
+                        BrandId = _offsetOptions.Brand + j
+                    });
                     ++productId;
                     --productsNeed;
                     ++i;
@@ -255,10 +237,11 @@ namespace CosmosDb.GraphAPI.Recommender.Import.Data
             for (int i = 0; i < peopleCount; ++i)
             {
                 var productsCount = _random.Next(minProductsCount, maxProductsCount);
-                people.Add(new Person(
-                    id: OffsetOptions.Person + i,
-                    name: _names[_random.Next(0, _names.Length)],
-                    productIds: GenerateProductsArray(productsCount)));
+                people.Add(new Person() {
+                    Id = _offsetOptions.Person + i,
+                    Name = _names[_random.Next(0, _names.Length)],
+                    ProductIds = GenerateProductsArray(productsCount)
+                    });
 
                 totalProducts += productsCount;
             }
@@ -290,5 +273,20 @@ namespace CosmosDb.GraphAPI.Recommender.Import.Data
 
             return people;
         }
+
+        public class DataOffsetOptions
+        {
+            public DataOffsetOptions(int brandOffset, int productOffset, int personOffset)
+            {
+                this.Brand = brandOffset;
+                this.Product = productOffset;
+                this.Person = personOffset;
+            }
+
+            public int Brand { get; private set; }
+            public int Product { get; private set; }
+            public int Person { get; private set; }
+        }
+
     }
 }

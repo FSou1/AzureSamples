@@ -120,7 +120,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Data\DataGenerator.cs" />
     <Compile Include="Data\DataProvider.cs" />
     <Compile Include="Data\Entites\Brand.cs" />
     <Compile Include="Data\Entites\Person.cs" />
@@ -130,9 +129,6 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.Release.config">
-      <SubType>Designer</SubType>
-    </None>
     <None Include="App.config">
       <SubType>Designer</SubType>
     </None>

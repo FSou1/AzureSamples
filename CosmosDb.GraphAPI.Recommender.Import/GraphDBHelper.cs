@@ -1,12 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using CosmosDb.GraphAPI.Recommender.Import.Data.Entites;
+﻿using CosmosDb.GraphAPI.Recommender.Import.Data.Entites;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.Graphs.BulkImport;
 using Microsoft.Azure.Graphs.Elements;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace CosmosDb.GraphAPI.Recommender.Import
 {

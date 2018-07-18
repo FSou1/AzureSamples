@@ -1,19 +1,15 @@
-﻿using System.Collections.Generic;
-using System.Configuration;
+﻿using CosmosDb.GraphAPI.Recommender.Import.Data.Entites;
+using System.Collections.Generic;
 using System.IO;
-using CosmosDb.GraphAPI.Recommender.Import.Data.Entites;
 
 namespace CosmosDb.GraphAPI.Recommender.Import.Data
 {
     public static class DataProvider
     {
-        private static readonly string _generatedDataLocation =
-            ConfigurationManager.AppSettings["DataGenerator.GeneratedData"];
-
-        public static List<Brand> ReadBrands(string sampleName)
+        public static List<Brand> ReadBrands(string dataLocation, string sampleName)
         {
             var brands = new List<Brand>();
-            var path = Path.Combine(_generatedDataLocation, $"{sampleName}-brands.csv");
+            var path = Path.Combine(dataLocation, $"{sampleName}-brands.csv");
             using (var sr = new StreamReader(path))
             {
                 string str;
@@ -29,10 +25,10 @@ namespace CosmosDb.GraphAPI.Recommender.Import.Data
             return brands;
         }
 
-        public static List<Product> ReadProducts(string sampleName)
+        public static List<Product> ReadProducts(string dataLocation, string sampleName)
         {
             var products = new List<Product>();
-            var path = Path.Combine(_generatedDataLocation, $"{sampleName}-products.csv");
+            var path = Path.Combine(dataLocation, $"{sampleName}-products.csv");
             using (var sr = new StreamReader(path))
             {
                 string str;
@@ -49,10 +45,10 @@ namespace CosmosDb.GraphAPI.Recommender.Import.Data
             return products;
         }
 
-        public static List<Person> ReadPeople(string sampleName)
+        public static List<Person> ReadPeople(string dataLocation, string sampleName)
         {
             var people = new List<Person>();
-            var path = Path.Combine(_generatedDataLocation, $"{sampleName}-people.csv");
+            var path = Path.Combine(dataLocation, $"{sampleName}-people.csv");
             using (var sr = new StreamReader(path))
             {
                 string str;

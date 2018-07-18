@@ -36,12 +36,14 @@ namespace AzureSQL.Recommender.Import
                         await SqlDBHelper.DropTablesAsync(connectionString);
                         break;
                     case 3:
+                        var generatedDataLocation = ConfigurationManager.AppSettings["DataLocationForImport"];
+
                         var sampleName = "S10000";
 
                         sw.Restart();
                         Console.WriteLine("Brands");
 
-                        var brands = DataProvider.ReadBrands(sampleName);
+                        var brands = DataProvider.ReadBrands(generatedDataLocation, sampleName);
                         Console.WriteLine(" Read " + sw.Elapsed);
                         sw.Restart();
                         SqlDBHelper.AddItems(brands, connectionString);
@@ -49,7 +51,7 @@ namespace AzureSQL.Recommender.Import
 
                         sw.Restart();
                         Console.WriteLine("Products");
-                        var products = DataProvider.ReadProducts(sampleName);
+                        var products = DataProvider.ReadProducts(generatedDataLocation, sampleName);
                         Console.WriteLine(" Read " + sw.Elapsed);
                         sw.Restart();
                         SqlDBHelper.AddItems(products, connectionString);
@@ -57,7 +59,7 @@ namespace AzureSQL.Recommender.Import
 
                         sw.Restart();
                         Console.WriteLine("People and orders");
-                        var (people, orders) = DataProvider.ReadPeopleAndOrders(sampleName);
+                        var (people, orders) = DataProvider.ReadPeopleAndOrders(generatedDataLocation, sampleName);
                         Console.WriteLine(" Read " + sw.Elapsed);
 
                         sw.Restart();
