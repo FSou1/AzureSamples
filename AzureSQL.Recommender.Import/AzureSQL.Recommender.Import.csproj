@@ -83,6 +83,7 @@
     <Content Include="Assets\db.png" />
     <Content Include="Assets\Queries\CreateTables.sql" />
     <Content Include="Assets\Queries\DropTables.sql" />
+    <Content Include="Assets\Queries\EnableIndexPrimaryAndForeignKeys.sql" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
