@@ -49,7 +49,7 @@ namespace AzureSQL.Recommender.Import.Data
             var people = new List<Person>();
             var orders = new List<Order>();
 
-            int orderdId = 0;
+            int orderdId = 1;
 
             var path = Path.Combine(_generatedDataLocation, $"{sampleName}-people.csv");
             using (var sr = new StreamReader(path))
