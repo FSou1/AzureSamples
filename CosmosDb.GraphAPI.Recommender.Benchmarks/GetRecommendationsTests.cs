@@ -84,9 +84,9 @@ namespace CosmosDb.GraphAPI.Recommender.Benchmarks
         //[DataRow(1001048, 7)] // 1 product S10_000
         //[DataRow(1001060, 8)] // 3 products S10_000
         //[DataRow(1001094, 35)] // 6 products S10_000
-        [DataRow(1000209, 23)] // 1 product S10_0000
-        [DataRow(1000283, 70)] // 3 products S10_0000
-        [DataRow(1000393, 154)] // 6 products S10_0000
+        [DataRow(1000209, 23)] // 1 product S100_0000
+        [DataRow(1000283, 70)] // 3 products S100_0000
+        [DataRow(1000393, 154)] // 6 products S100_0000
         public async Task TestRecommendationsBasedOnCommonAndDifferentBoughtProductsGreaterThanTwo(
             int personId, int recommendationsCount
         )
