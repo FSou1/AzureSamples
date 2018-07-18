@@ -50,7 +50,7 @@ namespace DataGenerator
             DataGenerator.SavePeople(generatedDataLocation, people, sampleName);
 
             Console.WriteLine("Done.");
-            Console.ReadKey();
+            Console.ReadLine();
         }
     }
 }
