@@ -40,5 +40,27 @@ namespace AzureSQL.Recommender.Benchmarks
                 Assert.AreEqual(recommendationsCount, actual.Count);
             }
         }
+
+        [DataTestMethod]
+        [DataRow(1000856, 213)] // 1 product S10_000
+        [DataRow(1000870, 530)] // 3 products S10_000
+        [DataRow(1000874, 693)] // 6 products S10_000
+        //[DataRow(1000130, 1765)] // 1 product S100_000
+        //[DataRow(1000162, 4026)] // 3 products S100_000
+        //[DataRow(1000181, 11255)] // 6 products S100_000
+        public void TestRecommendationsBasedOnCommonAndDifferentBoughtProductsWithoutDedup(
+            int personId, int recommendationsCount)
+        {
+            var query = string.Format(
+               format: File.ReadAllText(Path.Combine(_queriesLocation, "RecommendationsBasedOnCommonAndDifferentBoughtProductsWithoutDedup.sql")),
+               arg0: personId);
+
+            using (var db = new SqlConnection(_connectionString))
+            {
+                var actual = db.Query<Product>(query).ToList();
+
+                Assert.AreEqual(recommendationsCount, actual.Count);
+            }
+        }
     }
 }
