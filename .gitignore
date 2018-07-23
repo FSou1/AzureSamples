@@ -334,3 +334,4 @@ ASALocalRun/
 CosmosDb.GraphAPI.Recommender/App.Release.config
 CosmosDb.GraphAPI.Recommender.Benchmarks/app.Release.config
 CosmosDb.GraphAPI.Recommender.Import/App.Release.config
+Storage.Blob.SubContainers/appsettings.release.json
