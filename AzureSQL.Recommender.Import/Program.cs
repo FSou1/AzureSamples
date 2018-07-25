@@ -38,7 +38,8 @@ namespace AzureSQL.Recommender.Import
                     case 3:
                         var generatedDataLocation = ConfigurationManager.AppSettings["DataLocationForImport"];
 
-                        var sampleName = "S10000";
+                        Console.Write("Sample name: ");
+                        var sampleName = Console.ReadLine();
 
                         sw.Restart();
                         Console.WriteLine("Brands");
